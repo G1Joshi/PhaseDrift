@@ -1,4 +1,4 @@
-package com.example.phasedrift
+package dev.g1joshi.phasedrift
 
 import io.flutter.embedding.android.FlutterActivity
 
