@@ -4,7 +4,9 @@ import 'package:flame/game.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
+import '../core/domain/domain.dart';
 import '../core/theme/theme.dart';
+import '../ui/controls/input_controller.dart';
 import 'components/environment/environment.dart';
 import 'components/player/player_component.dart';
 import 'constants/kinematic_constants.dart';
@@ -17,7 +19,14 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
   final ChamberDefinition? chamber;
 
   late final PlayerComponent player;
+  late final InputController inputController;
+
   double moveInput = 0.0;
+  double elapsedTime = 0.0;
+  int shardsCollectedMask = 0;
+  bool isPaused = false;
+
+  int get elapsedMs => (elapsedTime * 1000).toInt();
 
   @override
   Color backgroundColor() => AppColors.obsidianVoid;
@@ -40,6 +49,23 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     player = PlayerComponent(initialPosition: spawn);
     world.add(player);
     camera.follow(player);
+
+    inputController = InputController(
+      onMoveChanged: (axis) => moveInput = axis,
+      onJumpPressed: () {
+        player.kinematics.pressJump();
+        player.triggerJumpSquish();
+      },
+      onJumpReleased: () {
+        player.kinematics.releaseJump();
+      },
+      onShiftPressed: () {
+        player.kinematics.triggerShift();
+      },
+      onPausePressed: () {
+        togglePause();
+      },
+    );
   }
 
   void _loadChamber(ChamberDefinition def) {
@@ -70,40 +96,58 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     world.add(ExitPortal(position: def.portalPosition));
   }
 
+  void pauseGame() {
+    isPaused = true;
+    overlays.add('PauseMenu');
+  }
+
+  void resumeGame() {
+    isPaused = false;
+    overlays.remove('PauseMenu');
+  }
+
+  void togglePause() {
+    if (isPaused) {
+      resumeGame();
+    } else {
+      pauseGame();
+    }
+  }
+
+  void collectShard(int shardIndex) {
+    if (shardIndex >= 0 && shardIndex < 3) {
+      shardsCollectedMask |= (1 << shardIndex);
+    }
+  }
+
+  void restartChamber() {
+    elapsedTime = 0.0;
+    shardsCollectedMask = 0;
+    resumeGame();
+    final spawn =
+        chamber?.spawnPoint ?? initialPlayerPosition ?? Vector2(100, 200);
+    player.position.setFrom(spawn);
+    player.kinematics.x = spawn.x;
+    player.kinematics.y = spawn.y;
+    player.kinematics.vx = 0.0;
+    player.kinematics.vy = 0.0;
+    player.kinematics.phase = const SolarPhase();
+    player.kinematics.isGrounded = false;
+  }
+
+  @override
+  void update(double dt) {
+    if (isPaused) return;
+    super.update(dt);
+    elapsedTime += dt;
+  }
+
   @override
   KeyEventResult onKeyEvent(
     KeyEvent event,
     Set<LogicalKeyboardKey> keysPressed,
   ) {
-    final isLeft =
-        keysPressed.contains(LogicalKeyboardKey.arrowLeft) ||
-        keysPressed.contains(LogicalKeyboardKey.keyA);
-    final isRight =
-        keysPressed.contains(LogicalKeyboardKey.arrowRight) ||
-        keysPressed.contains(LogicalKeyboardKey.keyD);
-
-    if (isLeft && !isRight) {
-      moveInput = -1.0;
-    } else if (isRight && !isLeft) {
-      moveInput = 1.0;
-    } else {
-      moveInput = 0.0;
-    }
-
-    if (event is KeyDownEvent) {
-      if (event.logicalKey == LogicalKeyboardKey.space) {
-        player.kinematics.pressJump();
-        player.triggerJumpSquish();
-      } else if (event.logicalKey == LogicalKeyboardKey.shiftLeft ||
-          event.logicalKey == LogicalKeyboardKey.shiftRight) {
-        player.kinematics.triggerShift();
-      }
-    } else if (event is KeyUpEvent) {
-      if (event.logicalKey == LogicalKeyboardKey.space) {
-        player.kinematics.releaseJump();
-      }
-    }
-
-    return KeyEventResult.handled;
+    final handled = inputController.handleKeyEvent(event, keysPressed);
+    return handled ? KeyEventResult.handled : KeyEventResult.ignored;
   }
 }
