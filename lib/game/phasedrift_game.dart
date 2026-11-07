@@ -5,13 +5,16 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import '../core/theme/theme.dart';
+import 'components/environment/environment.dart';
 import 'components/player/player_component.dart';
 import 'constants/kinematic_constants.dart';
+import 'levels/chamber_definition.dart';
 
 class PhaseDriftGame extends FlameGame with KeyboardEvents {
-  PhaseDriftGame({this.initialPlayerPosition});
+  PhaseDriftGame({this.initialPlayerPosition, this.chamber});
 
   final Vector2? initialPlayerPosition;
+  final ChamberDefinition? chamber;
 
   late final PlayerComponent player;
   double moveInput = 0.0;
@@ -28,9 +31,43 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
       ),
     );
 
-    player = PlayerComponent(initialPosition: initialPlayerPosition);
+    final def = chamber;
+    if (def != null) {
+      _loadChamber(def);
+    }
+
+    final spawn = def?.spawnPoint ?? initialPlayerPosition ?? Vector2(100, 200);
+    player = PlayerComponent(initialPosition: spawn);
     world.add(player);
     camera.follow(player);
+  }
+
+  void _loadChamber(ChamberDefinition def) {
+    for (final b in def.universalBlocks) {
+      world.add(UniversalBlock(position: b.position, size: b.size));
+    }
+    for (final pb in def.phaseBlocks) {
+      world.add(
+        PhaseBlock(
+          position: pb.position,
+          size: pb.size,
+          phaseType: pb.phaseType,
+        ),
+      );
+    }
+    for (final s in def.spikes) {
+      world.add(
+        HazardSpike(
+          position: s.position,
+          size: s.size,
+          orientation: s.orientation,
+        ),
+      );
+    }
+    for (final sh in def.shards) {
+      world.add(ChronoShard(position: sh.position, shardIndex: sh.shardIndex));
+    }
+    world.add(ExitPortal(position: def.portalPosition));
   }
 
   @override
