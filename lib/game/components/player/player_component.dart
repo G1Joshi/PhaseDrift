@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/theme/theme.dart';
 import '../../constants/kinematic_constants.dart';
+import '../../fx/fx.dart';
 import '../../phasedrift_game.dart';
 import 'player_kinematics.dart';
 
@@ -30,8 +31,22 @@ class PlayerComponent extends PositionComponent
   void update(double dt) {
     super.update(dt);
 
+    final wasGrounded = kinematics.isGrounded;
     kinematics.update(dt, moveAxis: game.moveInput);
     position.setValues(kinematics.x, kinematics.y);
+
+    if (!wasGrounded && kinematics.isGrounded) {
+      triggerLandingSquish();
+      final particleY = kinematics.isSolar
+          ? position.y + size.y / 2
+          : position.y - size.y / 2;
+      game.world.addAll(
+        ParticleFactory.createLandingBurst(
+          position: Vector2(position.x, particleY),
+          color: kinematics.phase.primaryColor,
+        ),
+      );
+    }
 
     if (squishX != 1.0 || squishY != 1.0) {
       squishX = squishX + (1.0 - squishX) * (dt * 15.0);
@@ -49,8 +64,8 @@ class PlayerComponent extends PositionComponent
   }
 
   void triggerLandingSquish() {
-    squishX = 1.25;
-    squishY = 0.80;
+    squishX = 1.30;
+    squishY = 0.70;
   }
 
   @override

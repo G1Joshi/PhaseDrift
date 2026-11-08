@@ -12,6 +12,7 @@ import '../ui/controls/input_controller.dart';
 import 'components/environment/environment.dart';
 import 'components/player/player_component.dart';
 import 'constants/kinematic_constants.dart';
+import 'fx/fx.dart';
 import 'levels/chamber_definition.dart';
 
 class PhaseDriftGame extends FlameGame with KeyboardEvents {
@@ -22,14 +23,21 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
 
   late final PlayerComponent player;
   late final InputController inputController;
+  final ScreenShake screenShake = ScreenShake();
 
   double moveInput = 0.0;
   double elapsedTime = 0.0;
   int shardsCollectedMask = 0;
   bool isPaused = false;
   bool isCompleted = false;
+  bool reduceMotion = false;
 
   int get elapsedMs => (elapsedTime * 1000).toInt();
+
+  void setReduceMotion(bool value) {
+    reduceMotion = value;
+    screenShake.reduceMotion = value;
+  }
 
   @override
   Color backgroundColor() => AppColors.obsidianVoid;
@@ -59,6 +67,7 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
         player.kinematics.pressJump();
         player.triggerJumpSquish();
         AudioEngine.instance.playJump();
+        HapticsService.instance.triggerJump();
       },
       onJumpReleased: () {
         player.kinematics.releaseJump();
@@ -67,6 +76,17 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
         player.kinematics.triggerShift();
         AudioEngine.instance.playShift();
         AudioEngine.instance.crossfadeToPhase(player.kinematics.phase);
+        screenShake.addTrauma(0.35);
+        HapticsService.instance.triggerShift();
+        if (!reduceMotion) {
+          world.add(
+            ParticleFactory.createShockwave(
+              center: player.position.clone(),
+              primaryColor: player.kinematics.phase.primaryColor,
+              accentColor: player.kinematics.phase.accentColor,
+            ),
+          );
+        }
       },
       onPausePressed: () {
         togglePause();
@@ -126,15 +146,24 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     }
   }
 
-  void collectShard(int shardIndex) {
+  void collectShard(int shardIndex, Vector2 shardPosition) {
     if (shardIndex >= 0 && shardIndex < 3) {
       shardsCollectedMask |= (1 << shardIndex);
       AudioEngine.instance.playShard();
+      HapticsService.instance.triggerShard();
+      world.addAll(
+        ParticleFactory.createShardSparkles(position: shardPosition),
+      );
     }
   }
 
   void killPlayer() {
     AudioEngine.instance.playDeath();
+    HapticsService.instance.triggerDeath();
+    screenShake.addTrauma(0.70);
+    world.addAll(
+      ParticleFactory.createDeathBurst(position: player.position.clone()),
+    );
     final spawn =
         chamber?.spawnPoint ?? initialPlayerPosition ?? Vector2(100, 200);
     player.position.setFrom(spawn);
@@ -188,13 +217,21 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     super.update(dt);
     elapsedTime += dt;
 
+    // Apply Screen Shake to viewfinder
+    final (shakeOffset, shakeAngle) = screenShake.update(dt);
+    if (shakeOffset.x != 0 || shakeOffset.y != 0) {
+      camera.viewfinder.position.add(shakeOffset);
+    }
+    camera.viewfinder.angle = shakeAngle;
+
     final playerRect = player.toRect();
 
     // 1. Collect Chrono-Shards
     for (final shard in world.children.query<ChronoShard>()) {
       if (!shard.isCollected && playerRect.overlaps(shard.toRect())) {
+        final pos = shard.position.clone();
         if (shard.collect()) {
-          collectShard(shard.shardIndex);
+          collectShard(shard.shardIndex, pos);
         }
       }
     }
