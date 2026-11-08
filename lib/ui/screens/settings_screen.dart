@@ -119,17 +119,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: AppTypography.button.copyWith(fontSize: 13.0)),
-              const SizedBox(height: 2.0),
-              Text(
-                subtitle,
-                style: AppTypography.telemetryLabel.copyWith(fontSize: 10.0),
-              ),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: AppTypography.button.copyWith(fontSize: 13.0),
+                ),
+                const SizedBox(height: 2.0),
+                Text(
+                  subtitle,
+                  style: AppTypography.telemetryLabel.copyWith(fontSize: 10.0),
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: 12.0),
           Switch(
             value: value,
             activeThumbColor: AppColors.solarAmber,
@@ -172,11 +178,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         )
                       else
                         const SizedBox(width: 48.0),
-                      Text(
-                        'SYSTEM SETTINGS',
-                        style: AppTypography.titleChamber.copyWith(
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 2.0,
+                      Expanded(
+                        child: Text(
+                          'SYSTEM SETTINGS',
+                          textAlign: TextAlign.center,
+                          style: AppTypography.sectionHeader.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 2.0,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 48.0),

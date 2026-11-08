@@ -1,4 +1,7 @@
+import 'dart:ui';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:phasedrift/core/domain/domain.dart';
 import 'package:phasedrift/game/game.dart';
 
 void main() {
@@ -86,5 +89,56 @@ void main() {
         );
       },
     );
+
+    test('resolves landing collision and grounds player on floor obstacle', () {
+      final kinematics = PlayerKinematics(x: 100.0, y: 190.0, vy: 100.0);
+      const floor = Rect.fromLTWH(0.0, 200.0, 300.0, 32.0);
+
+      kinematics.update(0.05, moveAxis: 0.0, solidObstacles: [floor]);
+
+      expect(kinematics.isGrounded, isTrue);
+      expect(kinematics.vy, equals(0.0));
+      expect(kinematics.y, equals(191.0));
+    });
+
+    test(
+      'resolves ceiling collision in Solar phase and resets upward velocity',
+      () {
+        final kinematics = PlayerKinematics(x: 100.0, y: 30.0, vy: -200.0);
+        const ceiling = Rect.fromLTWH(0.0, 0.0, 300.0, 16.0);
+
+        kinematics.update(0.05, moveAxis: 0.0, solidObstacles: [ceiling]);
+
+        expect(kinematics.vy, equals(0.0));
+        expect(kinematics.y, greaterThanOrEqualTo(25.0));
+      },
+    );
+
+    test('resolves wall collision and stops horizontal movement', () {
+      final kinematics = PlayerKinematics(x: 90.0, y: 191.0, vx: 180.0);
+      const wall = Rect.fromLTWH(100.0, 150.0, 16.0, 100.0);
+
+      kinematics.update(0.05, moveAxis: 1.0, solidObstacles: [wall]);
+
+      expect(kinematics.isTouchingWallRight, isTrue);
+      expect(kinematics.vx, equals(0.0));
+      expect(kinematics.x, equals(93.0));
+    });
+
+    test('resolves inverted landing collision in Void phase onto ceiling', () {
+      final kinematics = PlayerKinematics(
+        x: 100.0,
+        y: 30.0,
+        vy: -200.0,
+        phase: const VoidPhase(),
+      );
+      const ceilingBridge = Rect.fromLTWH(0.0, 0.0, 300.0, 16.0);
+
+      kinematics.update(0.05, moveAxis: 0.0, solidObstacles: [ceilingBridge]);
+
+      expect(kinematics.isGrounded, isTrue);
+      expect(kinematics.vy, equals(0.0));
+      expect(kinematics.y, equals(25.0));
+    });
   });
 }

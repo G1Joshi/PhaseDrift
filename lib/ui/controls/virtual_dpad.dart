@@ -140,60 +140,64 @@ class _VirtualDpadState extends State<VirtualDpad> {
 
   @override
   Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            // Left D-pad (Move Left / Right)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildDirectionalButton(
-                  icon: Icons.arrow_left,
-                  isPressed: _leftPressed,
-                  onStateChange: (pressed) =>
-                      setState(() => _leftPressed = pressed),
-                ),
-                const SizedBox(width: 8.0),
-                _buildDirectionalButton(
-                  icon: Icons.arrow_right,
-                  isPressed: _rightPressed,
-                  onStateChange: (pressed) =>
-                      setState(() => _rightPressed = pressed),
-                ),
-              ],
-            ),
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Left D-pad (Move Left / Right)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildDirectionalButton(
+                    icon: Icons.arrow_left,
+                    isPressed: _leftPressed,
+                    onStateChange: (pressed) =>
+                        setState(() => _leftPressed = pressed),
+                  ),
+                  const SizedBox(width: 8.0),
+                  _buildDirectionalButton(
+                    icon: Icons.arrow_right,
+                    isPressed: _rightPressed,
+                    onStateChange: (pressed) =>
+                        setState(() => _rightPressed = pressed),
+                  ),
+                ],
+              ),
 
-            // Right Action Buttons (Shift & Jump)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildActionButton(
-                  label: 'SHIFT',
-                  icon: Icons.swap_vert,
-                  isShift: true,
-                  onDown: widget.onShiftPressed,
-                ),
-                const SizedBox(width: 12.0),
-                _buildActionButton(
-                  label: 'JUMP',
-                  icon: Icons.keyboard_arrow_up,
-                  isPressed: _jumpPressed,
-                  onDown: () {
-                    setState(() => _jumpPressed = true);
-                    widget.onJumpPressed();
-                  },
-                  onUp: () {
-                    setState(() => _jumpPressed = false);
-                    widget.onJumpReleased();
-                  },
-                ),
-              ],
-            ),
-          ],
+              // Right Action Buttons (Shift & Jump)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildActionButton(
+                    label: 'SHIFT',
+                    icon: Icons.swap_vert,
+                    isShift: true,
+                    onDown: widget.onShiftPressed,
+                  ),
+                  const SizedBox(width: 12.0),
+                  _buildActionButton(
+                    label: 'JUMP',
+                    icon: Icons.keyboard_arrow_up,
+                    isPressed: _jumpPressed,
+                    onDown: () {
+                      setState(() => _jumpPressed = true);
+                      widget.onJumpPressed();
+                    },
+                    onUp: () {
+                      setState(() => _jumpPressed = false);
+                      widget.onJumpReleased();
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

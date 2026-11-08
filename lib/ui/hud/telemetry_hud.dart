@@ -47,105 +47,105 @@ class TelemetryHud extends StatelessWidget {
     final speedRatio = maxVelocity > 0 ? (velocity.abs() / maxVelocity) : 0.0;
     final chamberCode = 'CHAMBER ${chamberNumber.toString().padLeft(2, '0')}';
 
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Top-Left: Chamber badge and Phase Indicator
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8.0,
-                        vertical: 4.0,
+    return Align(
+      alignment: Alignment.topCenter,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Top-Left: Chamber badge and Phase Indicator
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8.0,
+                      vertical: 4.0,
+                    ),
+                    decoration: AppDecorations.hudModule(),
+                    child: Text(
+                      '$chamberCode // ${chamberName.toUpperCase()}',
+                      style: AppTypography.telemetryLabel.copyWith(
+                        color: AppColors.onSurface,
+                        fontWeight: FontWeight.w700,
                       ),
-                      decoration: AppDecorations.hudModule(),
-                      child: Text(
-                        '$chamberCode // ${chamberName.toUpperCase()}',
-                        style: AppTypography.telemetryLabel.copyWith(
+                    ),
+                  ),
+                  const SizedBox(height: 6.0),
+                  PhaseIndicator(phase: phase, compact: true),
+                ],
+              ),
+
+              // Top-Center: Velocity Gauge
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'VELOCITY // ${velocity.abs().toStringAsFixed(0)} PX/S',
+                    style: AppTypography.telemetryLabel,
+                  ),
+                  const SizedBox(height: 4.0),
+                  AmberCyanProgressBar(
+                    value: speedRatio,
+                    width: 140.0,
+                    height: 6.0,
+                  ),
+                ],
+              ),
+
+              // Top-Right: Shards, Stopwatch, Pause Button
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 42.0,
+                    padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                    margin: const EdgeInsets.only(right: 8.0),
+                    decoration: AppDecorations.hudModule(),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildShardPip(0),
+                        _buildShardPip(1),
+                        _buildShardPip(2),
+                      ],
+                    ),
+                  ),
+                  SplitStopwatchView(
+                    elapsedMs: elapsedMs,
+                    bestTimeMs: bestTimeMs,
+                  ),
+                  if (onPause != null) ...[
+                    const SizedBox(width: 8.0),
+                    GestureDetector(
+                      onTap: onPause,
+                      child: Container(
+                        width: 42.0,
+                        height: 42.0,
+                        decoration: ShapeDecoration(
+                          color: AppColors.interactiveModule,
+                          shape: AppDecorations.chamferShape(
+                            chamfer: AppDecorations.chamferSm,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.pause,
                           color: AppColors.onSurface,
-                          fontWeight: FontWeight.w700,
+                          size: 18.0,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 6.0),
-                    PhaseIndicator(phase: phase, compact: true),
                   ],
-                ),
-
-                // Top-Center: Velocity Gauge
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'VELOCITY // ${velocity.abs().toStringAsFixed(0)} PX/S',
-                      style: AppTypography.telemetryLabel,
-                    ),
-                    const SizedBox(height: 4.0),
-                    AmberCyanProgressBar(
-                      value: speedRatio,
-                      width: 140.0,
-                      height: 6.0,
-                    ),
-                  ],
-                ),
-
-                // Top-Right: Shards, Stopwatch, Pause Button
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      height: 42.0,
-                      padding: const EdgeInsets.symmetric(horizontal: 6.0),
-                      margin: const EdgeInsets.only(right: 8.0),
-                      decoration: AppDecorations.hudModule(),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildShardPip(0),
-                          _buildShardPip(1),
-                          _buildShardPip(2),
-                        ],
-                      ),
-                    ),
-                    SplitStopwatchView(
-                      elapsedMs: elapsedMs,
-                      bestTimeMs: bestTimeMs,
-                    ),
-                    if (onPause != null) ...[
-                      const SizedBox(width: 8.0),
-                      GestureDetector(
-                        onTap: onPause,
-                        child: Container(
-                          width: 42.0,
-                          height: 42.0,
-                          decoration: ShapeDecoration(
-                            color: AppColors.interactiveModule,
-                            shape: AppDecorations.chamferShape(
-                              chamfer: AppDecorations.chamferSm,
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.pause,
-                            color: AppColors.onSurface,
-                            size: 18.0,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

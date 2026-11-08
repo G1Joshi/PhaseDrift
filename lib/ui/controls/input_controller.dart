@@ -69,20 +69,22 @@ class InputController {
       setMoveAxis(0.0);
     }
 
-    if (event is KeyDownEvent) {
+    if (event is KeyDownEvent || event is KeyRepeatEvent) {
       if (event.logicalKey == LogicalKeyboardKey.space ||
           event.logicalKey == LogicalKeyboardKey.arrowUp ||
           event.logicalKey == LogicalKeyboardKey.keyW) {
-        pressJump();
+        if (event is KeyDownEvent) pressJump();
         return true;
       } else if (event.logicalKey == LogicalKeyboardKey.shiftLeft ||
           event.logicalKey == LogicalKeyboardKey.shiftRight ||
           event.logicalKey == LogicalKeyboardKey.keyE) {
-        triggerShift();
+        if (event is KeyDownEvent) triggerShift();
         return true;
       } else if (event.logicalKey == LogicalKeyboardKey.escape ||
           event.logicalKey == LogicalKeyboardKey.keyP) {
-        triggerPause();
+        if (event is KeyDownEvent) triggerPause();
+        return true;
+      } else if (isLeft || isRight) {
         return true;
       }
     } else if (event is KeyUpEvent) {
@@ -90,6 +92,11 @@ class InputController {
           event.logicalKey == LogicalKeyboardKey.arrowUp ||
           event.logicalKey == LogicalKeyboardKey.keyW) {
         releaseJump();
+        return true;
+      } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+          event.logicalKey == LogicalKeyboardKey.keyA ||
+          event.logicalKey == LogicalKeyboardKey.arrowRight ||
+          event.logicalKey == LogicalKeyboardKey.keyD) {
         return true;
       }
     }

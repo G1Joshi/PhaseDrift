@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/domain/domain.dart';
 import '../../../core/theme/theme.dart';
+import '../../phasedrift_game.dart';
 
 class PhaseBlock extends PositionComponent {
   PhaseBlock({
@@ -23,15 +24,21 @@ class PhaseBlock extends PositionComponent {
   void render(Canvas canvas) {
     super.render(canvas);
 
-    final solid = isSolid(const SolarPhase());
-    final opacity = solid ? 1.0 : 0.25;
+    final parentGame = findGame();
+    final currentPhase = parentGame is PhaseDriftGame && parentGame.isLoaded
+        ? parentGame.player.kinematics.phase
+        : (phaseType == PhaseType.solar
+              ? const SolarPhase()
+              : const VoidPhase());
+    final solid = isSolid(currentPhase);
+    final opacity = solid ? 1.0 : 0.20;
 
     final fillPaint = Paint()
-      ..color = _color.withValues(alpha: solid ? 0.35 : 0.10);
+      ..color = _color.withValues(alpha: solid ? 0.40 : 0.08);
     final borderPaint = Paint()
       ..color = _color.withValues(alpha: opacity)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
+      ..strokeWidth = solid ? 1.5 : 0.8;
 
     final rect = Rect.fromLTWH(0, 0, size.x, size.y);
     canvas.drawRect(rect, fillPaint);

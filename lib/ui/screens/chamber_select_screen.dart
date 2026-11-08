@@ -174,20 +174,23 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  if (isCleared && record.bestTimeMs != null)
-                    Text(
-                      SplitStopwatchView.formatTime(record.bestTimeMs!),
-                      style: AppTypography.telemetryValueSm.copyWith(
-                        color: rank?.color ?? AppColors.onSurface,
-                      ),
-                    )
-                  else
-                    Text(
-                      'PAR ${SplitStopwatchView.formatTime(chamber.parTimeMs)}',
-                      style: AppTypography.telemetryLabel.copyWith(
-                        color: AppColors.structuralSeam,
-                      ),
-                    ),
+                  Flexible(
+                    child: isCleared && record.bestTimeMs != null
+                        ? Text(
+                            SplitStopwatchView.formatTime(record.bestTimeMs!),
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.telemetryValueSm.copyWith(
+                              color: rank?.color ?? AppColors.onSurface,
+                            ),
+                          )
+                        : Text(
+                            'PAR ${SplitStopwatchView.formatTime(chamber.parTimeMs)}',
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.telemetryLabel.copyWith(
+                              color: AppColors.structuralSeam,
+                            ),
+                          ),
+                  ),
                   if (isUnlocked)
                     Row(
                       mainAxisSize: MainAxisSize.min,

@@ -5,6 +5,7 @@ import '../../../core/theme/theme.dart';
 import '../../constants/kinematic_constants.dart';
 import '../../fx/fx.dart';
 import '../../phasedrift_game.dart';
+import '../environment/environment.dart';
 import 'player_kinematics.dart';
 
 class PlayerComponent extends PositionComponent
@@ -32,7 +33,18 @@ class PlayerComponent extends PositionComponent
     super.update(dt);
 
     final wasGrounded = kinematics.isGrounded;
-    kinematics.update(dt, moveAxis: game.moveInput);
+
+    final obstacles = <Rect>[];
+    for (final block in game.world.children.query<UniversalBlock>()) {
+      obstacles.add(block.toRect());
+    }
+    for (final block in game.world.children.query<PhaseBlock>()) {
+      if (block.isSolid(kinematics.phase)) {
+        obstacles.add(block.toRect());
+      }
+    }
+
+    kinematics.update(dt, moveAxis: game.moveInput, solidObstacles: obstacles);
     position.setValues(kinematics.x, kinematics.y);
 
     if (!wasGrounded && kinematics.isGrounded) {
