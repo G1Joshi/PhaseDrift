@@ -4,6 +4,7 @@ import 'package:flame/game.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
+import '../core/audio/audio.dart';
 import '../core/domain/domain.dart';
 import '../core/theme/theme.dart';
 import '../ui/controls/input_controller.dart';
@@ -55,12 +56,15 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
       onJumpPressed: () {
         player.kinematics.pressJump();
         player.triggerJumpSquish();
+        AudioEngine.instance.playJump();
       },
       onJumpReleased: () {
         player.kinematics.releaseJump();
       },
       onShiftPressed: () {
         player.kinematics.triggerShift();
+        AudioEngine.instance.playShift();
+        AudioEngine.instance.crossfadeToPhase(player.kinematics.phase);
       },
       onPausePressed: () {
         togglePause();
@@ -99,11 +103,13 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
   void pauseGame() {
     isPaused = true;
     overlays.add('PauseMenu');
+    AudioEngine.instance.pauseMusic();
   }
 
   void resumeGame() {
     isPaused = false;
     overlays.remove('PauseMenu');
+    AudioEngine.instance.resumeMusic();
   }
 
   void togglePause() {
@@ -117,6 +123,7 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
   void collectShard(int shardIndex) {
     if (shardIndex >= 0 && shardIndex < 3) {
       shardsCollectedMask |= (1 << shardIndex);
+      AudioEngine.instance.playShard();
     }
   }
 
@@ -133,6 +140,7 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     player.kinematics.vy = 0.0;
     player.kinematics.phase = const SolarPhase();
     player.kinematics.isGrounded = false;
+    AudioEngine.instance.crossfadeToPhase(const SolarPhase());
   }
 
   @override
@@ -140,6 +148,15 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     if (isPaused) return;
     super.update(dt);
     elapsedTime += dt;
+
+    final playerRect = player.toRect();
+    for (final shard in world.children.query<ChronoShard>()) {
+      if (!shard.isCollected && playerRect.overlaps(shard.toRect())) {
+        if (shard.collect()) {
+          collectShard(shard.shardIndex);
+        }
+      }
+    }
   }
 
   @override
