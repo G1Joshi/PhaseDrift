@@ -7,6 +7,8 @@ ChamberDefinition buildChamber01() {
   return ChamberDefinition(
     chamberId: 1,
     name: 'Awakening',
+    description: 'Ground movement and jump mechanics',
+    parTimeMs: 15000,
     spawnPoint: Vector2(40.0, 270.0),
     portalPosition: Vector2(510.0, 288.0),
     width: 560.0,
