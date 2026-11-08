@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../core/audio/audio.dart';
 import '../core/domain/domain.dart';
+import '../core/services/services.dart';
 import '../core/theme/theme.dart';
 import '../ui/controls/input_controller.dart';
 import 'components/environment/environment.dart';
@@ -26,6 +27,7 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
   double elapsedTime = 0.0;
   int shardsCollectedMask = 0;
   bool isPaused = false;
+  bool isCompleted = false;
 
   int get elapsedMs => (elapsedTime * 1000).toInt();
 
@@ -94,6 +96,9 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
         ),
       );
     }
+    for (final b in def.beacons) {
+      world.add(ShiftBeacon(position: b.position, size: b.size));
+    }
     for (final sh in def.shards) {
       world.add(ChronoShard(position: sh.position, shardIndex: sh.shardIndex));
     }
@@ -113,6 +118,7 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
   }
 
   void togglePause() {
+    if (isCompleted) return;
     if (isPaused) {
       resumeGame();
     } else {
@@ -127,9 +133,42 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     }
   }
 
+  void killPlayer() {
+    AudioEngine.instance.playDeath();
+    final spawn =
+        chamber?.spawnPoint ?? initialPlayerPosition ?? Vector2(100, 200);
+    player.position.setFrom(spawn);
+    player.kinematics.x = spawn.x;
+    player.kinematics.y = spawn.y;
+    player.kinematics.vx = 0.0;
+    player.kinematics.vy = 0.0;
+    player.kinematics.phase = const SolarPhase();
+    player.kinematics.isGrounded = false;
+    AudioEngine.instance.crossfadeToPhase(const SolarPhase());
+  }
+
+  void completeChamber() async {
+    if (isCompleted) return;
+    isCompleted = true;
+    isPaused = true;
+    AudioEngine.instance.playShard();
+
+    final def = chamber;
+    if (def != null) {
+      await ProgressionService.instance.completeChamber(
+        chamberId: def.chamberId,
+        completionTimeMs: elapsedMs,
+        shardsMask: shardsCollectedMask,
+      );
+    }
+    overlays.add('VictoryScreen');
+  }
+
   void restartChamber() {
     elapsedTime = 0.0;
     shardsCollectedMask = 0;
+    isCompleted = false;
+    overlays.remove('VictoryScreen');
     resumeGame();
     final spawn =
         chamber?.spawnPoint ?? initialPlayerPosition ?? Vector2(100, 200);
@@ -145,17 +184,51 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
 
   @override
   void update(double dt) {
-    if (isPaused) return;
+    if (isPaused || isCompleted) return;
     super.update(dt);
     elapsedTime += dt;
 
     final playerRect = player.toRect();
+
+    // 1. Collect Chrono-Shards
     for (final shard in world.children.query<ChronoShard>()) {
       if (!shard.isCollected && playerRect.overlaps(shard.toRect())) {
         if (shard.collect()) {
           collectShard(shard.shardIndex);
         }
       }
+    }
+
+    // 2. Automated Shift Beacons
+    for (final beacon in world.children.query<ShiftBeacon>()) {
+      if (playerRect.overlaps(beacon.toRect())) {
+        if (beacon.trigger()) {
+          player.kinematics.triggerShift();
+          AudioEngine.instance.playShift();
+          AudioEngine.instance.crossfadeToPhase(player.kinematics.phase);
+        }
+      }
+    }
+
+    // 3. Hazard Spikes
+    for (final spike in world.children.query<HazardSpike>()) {
+      if (playerRect.overlaps(spike.toRect())) {
+        killPlayer();
+        return;
+      }
+    }
+
+    // 4. Out of bounds check
+    final chamberH = chamber?.height ?? 320.0;
+    if (player.position.y > chamberH + 60.0 || player.position.y < -60.0) {
+      killPlayer();
+      return;
+    }
+
+    // 5. Exit Portal Victory
+    final portal = world.children.query<ExitPortal>().firstOrNull;
+    if (portal != null && playerRect.overlaps(portal.toRect())) {
+      completeChamber();
     }
   }
 
@@ -164,6 +237,7 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     KeyEvent event,
     Set<LogicalKeyboardKey> keysPressed,
   ) {
+    if (isCompleted) return KeyEventResult.ignored;
     final handled = inputController.handleKeyEvent(event, keysPressed);
     return handled ? KeyEventResult.handled : KeyEventResult.ignored;
   }

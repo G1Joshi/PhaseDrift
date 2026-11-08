@@ -1,2 +1,10 @@
 export 'chamber_definition.dart';
+export 'chamber_registry.dart';
 export 'chambers/chamber_01.dart';
+export 'chambers/chamber_02.dart';
+export 'chambers/chamber_03.dart';
+export 'chambers/chamber_04.dart';
+export 'chambers/chamber_05.dart';
+export 'chambers/chamber_06.dart';
+export 'chambers/chamber_07.dart';
+export 'chambers/chamber_08.dart';

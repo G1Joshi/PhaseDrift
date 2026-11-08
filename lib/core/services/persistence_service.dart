@@ -8,6 +8,9 @@ class PersistenceService {
   PersistenceService([SharedPreferences? preferences])
     : _preferences = preferences;
 
+  static PersistenceService? _instance;
+  static PersistenceService get instance => _instance ??= PersistenceService();
+
   static const String _chamberPrefix = 'phasedrift_chamber_';
   static const String _statsKey = 'phasedrift_player_stats';
 
