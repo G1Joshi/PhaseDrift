@@ -171,6 +171,8 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     player.kinematics.y = spawn.y;
     player.kinematics.vx = 0.0;
     player.kinematics.vy = 0.0;
+    player.kinematics.coyoteTimer = 0.0;
+    player.kinematics.jumpBufferTimer = 0.0;
     player.kinematics.phase = const SolarPhase();
     player.kinematics.isGrounded = false;
     AudioEngine.instance.crossfadeToPhase(const SolarPhase());
@@ -199,6 +201,19 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     isCompleted = false;
     overlays.remove('VictoryScreen');
     resumeGame();
+
+    final def = chamber;
+    if (def != null) {
+      for (final s in world.children.query<ChronoShard>()) {
+        s.removeFromParent();
+      }
+      for (final sh in def.shards) {
+        world.add(
+          ChronoShard(position: sh.position, shardIndex: sh.shardIndex),
+        );
+      }
+    }
+
     final spawn =
         chamber?.spawnPoint ?? initialPlayerPosition ?? Vector2(100, 200);
     player.position.setFrom(spawn);
@@ -206,6 +221,8 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     player.kinematics.y = spawn.y;
     player.kinematics.vx = 0.0;
     player.kinematics.vy = 0.0;
+    player.kinematics.coyoteTimer = 0.0;
+    player.kinematics.jumpBufferTimer = 0.0;
     player.kinematics.phase = const SolarPhase();
     player.kinematics.isGrounded = false;
     AudioEngine.instance.crossfadeToPhase(const SolarPhase());
@@ -249,7 +266,7 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
 
     // 3. Hazard Spikes
     for (final spike in world.children.query<HazardSpike>()) {
-      if (playerRect.overlaps(spike.toRect())) {
+      if (playerRect.overlaps(spike.toRect().deflate(2.0))) {
         killPlayer();
         return;
       }
