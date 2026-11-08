@@ -1,121 +1,241 @@
+import 'package:flame/game.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
-void main() {
-  runApp(const MyApp());
+import 'core/audio/audio.dart';
+import 'core/services/services.dart';
+import 'core/theme/theme.dart';
+import 'game/game.dart';
+import 'ui/ui.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await PersistenceService.instance.init();
+  runApp(const PhaseDriftApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+typedef MyApp = PhaseDriftApp;
 
-  // This widget is the root of your application.
+class PhaseDriftApp extends StatelessWidget {
+  const PhaseDriftApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      title: 'PhaseDrift',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.solarTheme,
+      home: const MainNavigationHarness(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+enum AppRoute { title, chamberSelect, settings, gameplay }
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class MainNavigationHarness extends StatefulWidget {
+  const MainNavigationHarness({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<MainNavigationHarness> createState() => _MainNavigationHarnessState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _MainNavigationHarnessState extends State<MainNavigationHarness> {
+  AppRoute _currentRoute = AppRoute.title;
+  ChamberDefinition _activeChamber = ChamberRegistry.getChamber(1);
+  bool _reduceMotion = false;
 
-  void _incrementCounter() {
+  void _navigateTo(AppRoute route) {
+    setState(() => _currentRoute = route);
+  }
+
+  void _startChamber(ChamberDefinition chamber) {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _activeChamber = chamber;
+      _currentRoute = AppRoute.gameplay;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    return switch (_currentRoute) {
+      AppRoute.title => TitleScreen(
+        onStartGame: () => _startChamber(ChamberRegistry.getChamber(1)),
+        onOpenChamberSelect: () => _navigateTo(AppRoute.chamberSelect),
+        onOpenSettings: () => _navigateTo(AppRoute.settings),
+      ),
+      AppRoute.chamberSelect => ChamberSelectScreen(
+        onSelectChamber: _startChamber,
+        onBack: () => _navigateTo(AppRoute.title),
+      ),
+      AppRoute.settings => SettingsScreen(
+        reduceMotion: _reduceMotion,
+        onReduceMotionChanged: (val) => setState(() => _reduceMotion = val),
+        onBack: () => _navigateTo(AppRoute.title),
+      ),
+      AppRoute.gameplay => GameSessionView(
+        chamber: _activeChamber,
+        reduceMotion: _reduceMotion,
+        onOpenSettings: () => _navigateTo(AppRoute.settings),
+        onExitToMenu: () => _navigateTo(AppRoute.chamberSelect),
+        onLoadChamber: _startChamber,
+      ),
+    };
+  }
+}
+
+class GameSessionView extends StatefulWidget {
+  const GameSessionView({
+    super.key,
+    required this.chamber,
+    required this.reduceMotion,
+    required this.onOpenSettings,
+    required this.onExitToMenu,
+    required this.onLoadChamber,
+  });
+
+  final ChamberDefinition chamber;
+  final bool reduceMotion;
+  final VoidCallback onOpenSettings;
+  final VoidCallback onExitToMenu;
+  final ValueChanged<ChamberDefinition> onLoadChamber;
+
+  @override
+  State<GameSessionView> createState() => _GameSessionViewState();
+}
+
+class _GameSessionViewState extends State<GameSessionView>
+    with SingleTickerProviderStateMixin {
+  late PhaseDriftGame _game;
+  late final Ticker _ticker;
+  final ValueNotifier<int> _hudTicker = ValueNotifier<int>(0);
+
+  @override
+  void initState() {
+    super.initState();
+    _initGame();
+    _ticker = createTicker((_) {
+      _hudTicker.value++;
+    })..start();
+  }
+
+  void _initGame() {
+    _game = PhaseDriftGame(chamber: widget.chamber);
+    _game.setReduceMotion(widget.reduceMotion);
+    AudioEngine.instance.startMusic();
+  }
+
+  @override
+  void didUpdateWidget(covariant GameSessionView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.chamber.chamberId != widget.chamber.chamberId) {
+      _initGame();
+    }
+    _game.setReduceMotion(widget.reduceMotion);
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    _hudTicker.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+      backgroundColor: AppColors.obsidianVoid,
+      body: Stack(
+        children: [
+          // 1. Flame Game Engine Viewport
+          GameWidget<PhaseDriftGame>(
+            key: ValueKey('game_${widget.chamber.chamberId}'),
+            game: _game,
+            autofocus: true,
+            overlayBuilderMap: {
+              'PauseMenu': (context, game) => PauseMenu(
+                onResume: () {
+                  game.resumeGame();
+                  setState(() {});
+                },
+                onRestart: () {
+                  game.restartChamber();
+                  setState(() {});
+                },
+                onSettings: widget.onOpenSettings,
+                onQuit: widget.onExitToMenu,
+                phase: game.player.kinematics.phase,
+                chamberName: widget.chamber.name,
+                chamberNumber: widget.chamber.chamberId,
+              ),
+              'VictoryScreen': (context, game) {
+                final nextChamber = ChamberRegistry.getNextChamber(
+                  widget.chamber.chamberId,
+                );
+                return VictoryScreen(
+                  chamberId: widget.chamber.chamberId,
+                  chamberName: widget.chamber.name,
+                  clearTimeMs: game.elapsedMs,
+                  parTimeMs: widget.chamber.parTimeMs,
+                  shardsMask: game.shardsCollectedMask,
+                  onRetry: () {
+                    game.restartChamber();
+                    setState(() {});
+                  },
+                  onNextChamber: nextChamber != null
+                      ? () => widget.onLoadChamber(nextChamber)
+                      : null,
+                  onChamberSelect: widget.onExitToMenu,
+                );
+              },
+            },
+          ),
+
+          // 2. Telemetry HUD Overlay
+          ValueListenableBuilder<int>(
+            valueListenable: _hudTicker,
+            builder: (context, _, child) {
+              if (!_game.isLoaded || _game.isCompleted) {
+                return const SizedBox.shrink();
+              }
+              final activePhase = _game.player.kinematics.phase;
+              final currentVx = _game.player.kinematics.vx;
+              return TelemetryHud(
+                chamberName: widget.chamber.name,
+                chamberNumber: widget.chamber.chamberId,
+                phase: activePhase,
+                elapsedMs: _game.elapsedMs,
+                bestTimeMs: widget.chamber.parTimeMs,
+                shardsMask: _game.shardsCollectedMask,
+                velocity: currentVx,
+                maxVelocity: KinematicConstants.runSpeed,
+                onPause: () {
+                  _game.pauseGame();
+                  setState(() {});
+                },
+              );
+            },
+          ),
+
+          // 3. Virtual Mobile / Touch D-pad
+          ValueListenableBuilder<int>(
+            valueListenable: _hudTicker,
+            builder: (context, _, child) {
+              if (!_game.isLoaded || _game.isPaused || _game.isCompleted) {
+                return const SizedBox.shrink();
+              }
+              final activePhase = _game.player.kinematics.phase;
+              return VirtualDpad(
+                phase: activePhase,
+                onMove: (axis) => _game.inputController.setMoveAxis(axis),
+                onJumpPressed: () => _game.inputController.pressJump(),
+                onJumpReleased: () => _game.inputController.releaseJump(),
+                onShiftPressed: () {
+                  _game.inputController.triggerShift();
+                },
+              );
+            },
+          ),
+        ],
       ),
     );
   }
