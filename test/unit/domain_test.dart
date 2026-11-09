@@ -59,6 +59,14 @@ void main() {
       expect(fasterRun.bestTimeMs, equals(12800)); // Replaces with faster time
       expect(fasterRun.shardCount, equals(3));
     });
+
+    test('countShards calculates correct bit population count', () {
+      expect(ChamberRecord.countShards(0), equals(0));
+      expect(ChamberRecord.countShards(1), equals(1));
+      expect(ChamberRecord.countShards(3), equals(2));
+      expect(ChamberRecord.countShards(7), equals(3));
+      expect(ChamberRecord.countShards(15), equals(4));
+    });
   });
 
   group('PersistenceService Logic', () {

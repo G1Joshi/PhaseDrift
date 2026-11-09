@@ -140,5 +140,15 @@ void main() {
       expect(kinematics.vy, equals(0.0));
       expect(kinematics.y, equals(25.0));
     });
+
+    test('ladder allows jump execution when player is on ladder', () {
+      final kinematics = PlayerKinematics();
+      kinematics.setGrounded(false);
+      kinematics.coyoteTimer = 0.0;
+      kinematics.isOnLadder = true;
+
+      kinematics.pressJump();
+      expect(kinematics.vy, equals(-KinematicConstants.jumpImpulseMagnitude));
+    });
   });
 }

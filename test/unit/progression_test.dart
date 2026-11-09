@@ -163,4 +163,130 @@ void main() {
       },
     );
   });
+
+  group('PersistenceService Settings & Telemetry State', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    test(
+      'persists and restores audio volume settings and mute state',
+      () async {
+        final persistence = PersistenceService();
+        await persistence.init();
+
+        // Default values when uninitialized
+        final defaults = persistence.getAudioSettings();
+        expect(defaults.$1, equals(0.8));
+        expect(defaults.$2, equals(0.7));
+        expect(defaults.$3, equals(0.9));
+        expect(defaults.$4, isFalse);
+
+        // Persist custom values
+        await persistence.saveAudioSettings(
+          master: 0.5,
+          music: 0.4,
+          sfx: 0.6,
+          muted: true,
+        );
+
+        final updated = persistence.getAudioSettings();
+        expect(updated.$1, equals(0.5));
+        expect(updated.$2, equals(0.4));
+        expect(updated.$3, equals(0.6));
+        expect(updated.$4, isTrue);
+      },
+    );
+
+    test(
+      'persists and restores haptic feedback and motion reduction preferences',
+      () async {
+        final persistence = PersistenceService();
+        await persistence.init();
+
+        expect(persistence.getHapticsEnabled(), isTrue);
+        expect(persistence.getReduceMotion(), isFalse);
+
+        await persistence.saveHapticsEnabled(false);
+        await persistence.saveReduceMotion(true);
+
+        expect(persistence.getHapticsEnabled(), isFalse);
+        expect(persistence.getReduceMotion(), isTrue);
+      },
+    );
+  });
+
+  group('MilestoneService Tactical Badges & Progression', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    test(
+      'loads default 16 locked milestones and triggers first shift unlock',
+      () async {
+        final persistence = PersistenceService();
+        await persistence.init();
+        final milestoneService = MilestoneService(persistence: persistence);
+
+        final milestones = await milestoneService.loadMilestones();
+        expect(milestones.length, equals(16));
+        expect(await milestoneService.getUnlockedCount(), equals(0));
+
+        // Trigger first shift
+        final unlocked = await milestoneService.triggerUnlock('first_shift');
+        expect(unlocked, isNotNull);
+        expect(unlocked!.id, equals('first_shift'));
+        expect(unlocked.isUnlocked, isTrue);
+        expect(await milestoneService.getUnlockedCount(), equals(1));
+        expect(await milestoneService.isUnlocked('first_shift'), isTrue);
+
+        // Repeated trigger returns null (already unlocked)
+        final repeat = await milestoneService.triggerUnlock('first_shift');
+        expect(repeat, isNull);
+      },
+    );
+
+    test('evaluates chamber run progression and awards awakening and collector badges', () async {
+      final persistence = PersistenceService();
+      await persistence.init();
+      final milestoneService = MilestoneService(persistence: persistence);
+
+      final record = ChamberRecord(
+        chamberId: 1,
+        bestTimeMs: 12000,
+        collectedShardsMask: 7, // 3 shards
+        isUnlocked: true,
+      );
+
+      final unlocked = await milestoneService.evaluateAfterChamberRun(
+        chamberId: 1,
+        record: record,
+        allRecords: [record],
+        totalCampaignChambers: 50,
+        isProcedural: false,
+      );
+
+      final unlockedIds = unlocked.map((m) => m.id).toSet();
+      expect(unlockedIds.contains('first_chamber'), isTrue);
+      expect(unlockedIds.contains('speed_demon'), isTrue);
+    });
+
+    test(
+      'resetProgression clears progression telemetry and relocks milestones',
+      () async {
+        final persistence = PersistenceService();
+        await persistence.init();
+        final progressionService = ProgressionService(persistence: persistence);
+        final milestoneService = MilestoneService(persistence: persistence);
+
+        // Unlock a milestone
+        await milestoneService.triggerUnlock('first_shift');
+        expect(await milestoneService.getUnlockedCount(), equals(1));
+
+        // Reset
+        await progressionService.resetProgression();
+        expect(await milestoneService.getUnlockedCount(), equals(0));
+      },
+    );
+  });
 }
