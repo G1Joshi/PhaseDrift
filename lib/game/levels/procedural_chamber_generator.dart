@@ -323,6 +323,52 @@ abstract final class ProceduralChamberGenerator {
       ),
     ]);
 
+    final phaseGates = <PhaseGateData>[];
+    final tachyonPads = <TachyonPadData>[];
+    final directives = <ChamberDirectiveData>[];
+
+    if (chamberId == 1) {
+      directives.addAll([
+        ChamberDirectiveData(
+          position: Vector2(60, 220),
+          title: '[A / D] RUN',
+          subtitle: 'KINETIC ACCELERATION',
+        ),
+        ChamberDirectiveData(
+          position: Vector2(170, 190),
+          title: '[SPACE] JUMP',
+          subtitle: 'HOLD FOR HEIGHT',
+        ),
+        ChamberDirectiveData(
+          position: Vector2(290, 160),
+          title: '[SHIFT] DRIFT',
+          subtitle: 'INVERT REALITY',
+        ),
+        ChamberDirectiveData(
+          position: Vector2(width - 60, 220),
+          title: 'WARP PORTAL',
+          subtitle: 'ENTER TO ADVANCE',
+        ),
+      ]);
+    }
+
+    if (tierIdx >= 2) {
+      tachyonPads.add(
+        TachyonPadData(
+          position: Vector2(step1X + 10.0, floorY - 26.0),
+          size: Vector2(32.0, 6.0),
+          boostVelocity: Vector2(320.0, 0.0),
+        ),
+      );
+      phaseGates.add(
+        PhaseGateData(
+          position: Vector2(step2X + (platW / 2) - 8.0, floorY - 110.0),
+          size: Vector2(16.0, 48.0),
+          phase: const VoidPhase(),
+        ),
+      );
+    }
+
     return ChamberDefinition(
       chamberId: chamberId,
       name: name,
@@ -339,6 +385,9 @@ abstract final class ProceduralChamberGenerator {
       phaseBlocks: phaseBlocks,
       spikes: spikes,
       shards: shards,
+      phaseGates: phaseGates,
+      tachyonPads: tachyonPads,
+      directives: directives,
     );
   }
 
@@ -404,6 +453,29 @@ abstract final class ProceduralChamberGenerator {
       ChronoShardData(position: Vector2(510 + platW / 2, 215), shardIndex: 2),
     ];
 
+    final directives = <ChamberDirectiveData>[];
+    if (chamberId == 2) {
+      directives.add(
+        ChamberDirectiveData(
+          position: Vector2(80, 200),
+          title: 'PHASE ARCHIPELAGO',
+          subtitle: 'CROSS FLOATING VOID ISLETS',
+        ),
+      );
+    }
+
+    final movingPlatforms = <MovingPlatformData>[];
+    if (tierIdx >= 1) {
+      movingPlatforms.add(
+        MovingPlatformData(
+          startPosition: Vector2(300.0, 210.0),
+          endPosition: Vector2(360.0, 210.0),
+          size: Vector2(48.0, 14.0),
+          speed: 45.0,
+        ),
+      );
+    }
+
     return ChamberDefinition(
       chamberId: chamberId,
       name: name,
@@ -420,6 +492,8 @@ abstract final class ProceduralChamberGenerator {
       phaseBlocks: phaseBlocks,
       spikes: spikes,
       shards: shards,
+      directives: directives,
+      movingPlatforms: movingPlatforms,
     );
   }
 
@@ -498,6 +572,29 @@ abstract final class ProceduralChamberGenerator {
       ChronoShardData(position: Vector2(500, 185), shardIndex: 2),
     ];
 
+    final directives = <ChamberDirectiveData>[];
+    if (chamberId == 3) {
+      directives.add(
+        ChamberDirectiveData(
+          position: Vector2(80, 170),
+          title: 'LOW CLEARANCE',
+          subtitle: 'MICRO-HOP & CEILING STRIDE',
+        ),
+      );
+    }
+
+    final movingPlatforms = <MovingPlatformData>[];
+    if (tierIdx >= 2) {
+      movingPlatforms.add(
+        MovingPlatformData(
+          startPosition: Vector2(250.0, 160.0),
+          endPosition: Vector2(370.0, 160.0),
+          size: Vector2(40.0, 12.0),
+          speed: 55.0,
+        ),
+      );
+    }
+
     return ChamberDefinition(
       chamberId: chamberId,
       name: name,
@@ -514,6 +611,8 @@ abstract final class ProceduralChamberGenerator {
       phaseBlocks: phaseBlocks,
       spikes: spikes,
       shards: shards,
+      directives: directives,
+      movingPlatforms: movingPlatforms,
     );
   }
 
@@ -767,6 +866,13 @@ abstract final class ProceduralChamberGenerator {
       ChronoShardData(position: Vector2(50, 145), shardIndex: 2),
     ];
 
+    final ladders = <PhaseLadderData>[
+      PhaseLadderData(
+        position: Vector2(width / 2 - 10.0, 310.0),
+        size: Vector2(20.0, 90.0),
+      ),
+    ];
+
     return ChamberDefinition(
       chamberId: chamberId,
       name: name,
@@ -783,6 +889,7 @@ abstract final class ProceduralChamberGenerator {
       phaseBlocks: phaseBlocks,
       spikes: spikes,
       shards: shards,
+      ladders: ladders,
     );
   }
 
@@ -1023,6 +1130,26 @@ abstract final class ProceduralChamberGenerator {
       ChronoShardData(position: Vector2(725, 325), shardIndex: 2),
     ];
 
+    final phaseGates = <PhaseGateData>[];
+    final tachyonPads = <TachyonPadData>[];
+
+    if (tierIdx >= 2) {
+      tachyonPads.add(
+        TachyonPadData(
+          position: Vector2(300.0, 180.0),
+          size: Vector2(32.0, 6.0),
+          boostVelocity: Vector2(340.0, -100.0),
+        ),
+      );
+      phaseGates.add(
+        PhaseGateData(
+          position: Vector2(560.0, 120.0),
+          size: Vector2(16.0, 56.0),
+          phase: const SolarPhase(),
+        ),
+      );
+    }
+
     return ChamberDefinition(
       chamberId: chamberId,
       name: name,
@@ -1038,6 +1165,8 @@ abstract final class ProceduralChamberGenerator {
       phaseBlocks: phaseBlocks,
       spikes: spikes,
       shards: shards,
+      phaseGates: phaseGates,
+      tachyonPads: tachyonPads,
     );
   }
 
@@ -1068,6 +1197,11 @@ abstract final class ProceduralChamberGenerator {
       spikes: chamber.spikes,
       shards: chamber.shards,
       beacons: chamber.beacons,
+      phaseGates: chamber.phaseGates,
+      tachyonPads: chamber.tachyonPads,
+      directives: chamber.directives,
+      movingPlatforms: chamber.movingPlatforms,
+      ladders: chamber.ladders,
     );
   }
 }

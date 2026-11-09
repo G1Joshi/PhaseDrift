@@ -45,38 +45,41 @@ class _VirtualDpadState extends State<VirtualDpad> {
   }) {
     final activeColor = widget.phase.primaryColor;
 
-    return Listener(
-      onPointerDown: (_) {
-        onStateChange(true);
-        _updateMove();
-      },
-      onPointerUp: (_) {
-        onStateChange(false);
-        _updateMove();
-      },
-      onPointerCancel: (_) {
-        onStateChange(false);
-        _updateMove();
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 60),
-        width: 56.0,
-        height: 56.0,
-        decoration: ShapeDecoration(
-          color: isPressed
-              ? activeColor.withValues(alpha: 0.25)
-              : AppColors.canvasDark.withValues(alpha: 0.70),
-          shape: AppDecorations.chamferShape(
-            chamfer: AppDecorations.chamferSm,
-            borderColor: isPressed ? activeColor : AppColors.structuralSeam,
-            borderWidth: isPressed ? 1.5 : 1.0,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: Listener(
+        onPointerDown: (_) {
+          onStateChange(true);
+          _updateMove();
+        },
+        onPointerUp: (_) {
+          onStateChange(false);
+          _updateMove();
+        },
+        onPointerCancel: (_) {
+          onStateChange(false);
+          _updateMove();
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 60),
+          width: 56.0,
+          height: 56.0,
+          decoration: ShapeDecoration(
+            color: isPressed
+                ? activeColor.withValues(alpha: 0.25)
+                : AppColors.canvasDark.withValues(alpha: 0.70),
+            shape: AppDecorations.chamferShape(
+              chamfer: AppDecorations.chamferSm,
+              borderColor: isPressed ? activeColor : AppColors.structuralSeam,
+              borderWidth: isPressed ? 1.5 : 1.0,
+            ),
           ),
-        ),
-        child: Center(
-          child: Icon(
-            icon,
-            color: isPressed ? activeColor : AppColors.onSurface,
-            size: 26.0,
+          child: Center(
+            child: Icon(
+              icon,
+              color: isPressed ? activeColor : AppColors.onSurface,
+              size: 26.0,
+            ),
           ),
         ),
       ),
@@ -93,46 +96,49 @@ class _VirtualDpadState extends State<VirtualDpad> {
   }) {
     final activeColor = widget.phase.primaryColor;
 
-    return Listener(
-      onPointerDown: (_) => onDown(),
-      onPointerUp: (_) => onUp?.call(),
-      onPointerCancel: (_) => onUp?.call(),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 60),
-        width: 64.0,
-        height: 64.0,
-        decoration: ShapeDecoration(
-          color: isPressed
-              ? activeColor.withValues(alpha: 0.3)
-              : (isShift
-                    ? widget.phase.accentColor.withValues(alpha: 0.15)
-                    : AppColors.canvasDark.withValues(alpha: 0.70)),
-          shape: AppDecorations.chamferShape(
-            chamfer: AppDecorations.chamferMd,
-            borderColor: isPressed
-                ? activeColor
-                : (isShift ? activeColor : AppColors.border),
-            borderWidth: isPressed ? 2.0 : 1.5,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: Listener(
+        onPointerDown: (_) => onDown(),
+        onPointerUp: (_) => onUp?.call(),
+        onPointerCancel: (_) => onUp?.call(),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 60),
+          width: 64.0,
+          height: 64.0,
+          decoration: ShapeDecoration(
+            color: isPressed
+                ? activeColor.withValues(alpha: 0.3)
+                : (isShift
+                      ? widget.phase.accentColor.withValues(alpha: 0.15)
+                      : AppColors.canvasDark.withValues(alpha: 0.70)),
+            shape: AppDecorations.chamferShape(
+              chamfer: AppDecorations.chamferMd,
+              borderColor: isPressed
+                  ? activeColor
+                  : (isShift ? activeColor : AppColors.border),
+              borderWidth: isPressed ? 2.0 : 1.5,
+            ),
           ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isPressed ? activeColor : AppColors.onSurface,
-              size: 24.0,
-            ),
-            const SizedBox(height: 2.0),
-            Text(
-              label,
-              style: AppTypography.telemetryLabel.copyWith(
-                fontSize: 9.0,
-                color: isPressed ? activeColor : AppColors.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: isPressed ? activeColor : AppColors.onSurface,
+                size: 24.0,
               ),
-            ),
-          ],
+              const SizedBox(height: 2.0),
+              Text(
+                label,
+                style: AppTypography.telemetryLabel.copyWith(
+                  fontSize: 9.0,
+                  color: isPressed ? activeColor : AppColors.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

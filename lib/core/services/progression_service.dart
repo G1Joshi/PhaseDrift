@@ -1,4 +1,5 @@
 import '../domain/domain.dart';
+import 'milestone_service.dart';
 import 'persistence_service.dart';
 
 class ProgressionService {
@@ -92,6 +93,22 @@ class ProgressionService {
     }
     await _persistence.savePlayerStats(updatedStats);
 
+    // Evaluate tactical milestones
+    final allRecords = await loadAllRecords(50);
+    await MilestoneService.instance.evaluateAfterChamberRun(
+      chamberId: chamberId,
+      record: updated,
+      allRecords: allRecords,
+      totalCampaignChambers: 50,
+      isProcedural: chamberId > 50,
+    );
+
     return updated;
+  }
+
+  Future<void> resetProgression() async {
+    await _ensureInitialized();
+    await _persistence.resetProgressionTelemetry();
+    await MilestoneService.instance.resetAllMilestones();
   }
 }

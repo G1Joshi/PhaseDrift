@@ -29,15 +29,17 @@ class ChamberRecord {
 
   bool get isCleared => bestTimeMs != null;
 
-  int get shardCount {
+  static int countShards(int mask) {
     var count = 0;
-    var mask = collectedShardsMask;
-    while (mask > 0) {
-      count += mask & 1;
-      mask >>= 1;
+    var m = mask;
+    while (m > 0) {
+      count += m & 1;
+      m >>= 1;
     }
     return count;
   }
+
+  int get shardCount => countShards(collectedShardsMask);
 
   bool hasShard(int index) {
     if (index < 0 || index >= 3) return false;

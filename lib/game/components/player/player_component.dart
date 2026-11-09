@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../core/audio/audio.dart';
+import '../../../core/services/services.dart';
 import '../../../core/theme/theme.dart';
 import '../../constants/kinematic_constants.dart';
 import '../../fx/fx.dart';
@@ -30,12 +32,14 @@ class PlayerComponent extends PositionComponent
   double squishX = 1.0;
   double squishY = 1.0;
   final List<Vector2> _ghostTrail = [];
+  double _wallSparkTimer = 0.0;
 
   @override
   void update(double dt) {
     super.update(dt);
 
     final wasGrounded = kinematics.isGrounded;
+    final preVy = kinematics.vy;
 
     final obstacles = <Rect>[];
     for (final block in game.world.children.query<UniversalBlock>()) {
@@ -47,7 +51,57 @@ class PlayerComponent extends PositionComponent
       }
     }
 
+    // Moving Platform carrier interaction
+    Vector2 moverDelta = Vector2.zero();
+    for (final mover in game.world.children.query<MovingPlatform>()) {
+      if (mover.isSolid(kinematics.phase)) {
+        obstacles.add(mover.toRect());
+        final halfW = size.x / 2;
+        final halfH = size.y / 2;
+        final footRect = kinematics.isSolar
+            ? Rect.fromLTWH(
+                position.x - halfW + 1,
+                position.y + halfH - 2,
+                size.x - 2,
+                4,
+              )
+            : Rect.fromLTWH(
+                position.x - halfW + 1,
+                position.y - halfH - 2,
+                size.x - 2,
+                4,
+              );
+        if (footRect.overlaps(mover.toRect())) {
+          moverDelta = mover.velocity * dt;
+        }
+      }
+    }
+
+    // Phase Ladder & Gravitational Conduit interaction
+    bool isOnLadder = false;
+    for (final ladder in game.world.children.query<PhaseLadder>()) {
+      if (ladder.isActive(kinematics.phase) &&
+          toRect().overlaps(ladder.toRect())) {
+        isOnLadder = true;
+        break;
+      }
+    }
+
+    kinematics.isOnLadder = isOnLadder;
+    if (isOnLadder) {
+      if (kinematics.isSolar && kinematics.vy > 40.0) {
+        kinematics.vy = 40.0;
+      } else if (!kinematics.isSolar && kinematics.vy < -40.0) {
+        kinematics.vy = -40.0;
+      }
+    }
+
     kinematics.update(dt, moveAxis: game.moveInput, solidObstacles: obstacles);
+
+    if (moverDelta.x != 0 || moverDelta.y != 0) {
+      kinematics.x += moverDelta.x;
+      kinematics.y += moverDelta.y;
+    }
     position.setValues(kinematics.x, kinematics.y);
 
     // Dynamic ghost trails during high-speed kinetic runs and slingshots
@@ -62,7 +116,15 @@ class PlayerComponent extends PositionComponent
     }
 
     if (!wasGrounded && kinematics.isGrounded) {
-      triggerLandingSquish();
+      AudioEngine.instance.playLand();
+      HapticsService.instance.triggerLand();
+      final isHardLanding = preVy.abs() > 200.0;
+      if (isHardLanding) {
+        triggerHeavyLandingSquish();
+        game.screenShake.addTrauma(0.12);
+      } else {
+        triggerLandingSquish();
+      }
       final particleY = kinematics.isSolar
           ? position.y + size.y / 2
           : position.y - size.y / 2;
@@ -70,8 +132,30 @@ class PlayerComponent extends PositionComponent
         ParticleFactory.createLandingBurst(
           position: Vector2(position.x, particleY),
           color: kinematics.phase.primaryColor,
+          count: isHardLanding ? 14 : 8,
         ),
       );
+    }
+
+    // Wall slide friction sparks
+    if (!kinematics.isGrounded &&
+        (kinematics.isTouchingWallLeft || kinematics.isTouchingWallRight) &&
+        kinematics.vy.abs() > 40.0 &&
+        !game.reduceMotion) {
+      _wallSparkTimer += dt;
+      if (_wallSparkTimer >= 0.08) {
+        _wallSparkTimer = 0.0;
+        final wallX = kinematics.isTouchingWallLeft
+            ? position.x - size.x / 2
+            : position.x + size.x / 2;
+        game.world.addAll(
+          ParticleFactory.createLandingBurst(
+            position: Vector2(wallX, position.y),
+            color: kinematics.phase.accentColor,
+            count: 3,
+          ),
+        );
+      }
     }
 
     if (squishX != 1.0 || squishY != 1.0) {
@@ -92,6 +176,11 @@ class PlayerComponent extends PositionComponent
   void triggerLandingSquish() {
     squishX = 1.30;
     squishY = 0.70;
+  }
+
+  void triggerHeavyLandingSquish() {
+    squishX = 1.45;
+    squishY = 0.55;
   }
 
   @override

@@ -22,6 +22,7 @@ class PlayerKinematics {
   bool isGrounded = false;
   bool isTouchingWallLeft = false;
   bool isTouchingWallRight = false;
+  bool isOnLadder = false;
 
   double coyoteTimer = 0.0;
   double jumpBufferTimer = 0.0;
@@ -273,7 +274,7 @@ class PlayerKinematics {
   }
 
   void _evaluateJump() {
-    if (isGrounded || coyoteTimer > 0) {
+    if (isGrounded || coyoteTimer > 0 || isOnLadder) {
       _executeJump();
     } else if (isTouchingWallLeft || isTouchingWallRight) {
       _executeWallJump();

@@ -59,29 +59,43 @@ class QuantumBackdrop extends PositionComponent
   void render(Canvas canvas) {
     super.render(canvas);
 
-    // 1. Deep Space Base
+    // 1. Deep Space Base with Dynamic Reality Tint
     final rect = Rect.fromLTWH(0, 0, size.x, size.y);
-    final bgPaint = Paint()..color = AppColors.obsidianVoid;
+    const solarBase = Color(0xFF0A0704);
+    const voidBase = Color(0xFF03080E);
+    final currentBase = Color.lerp(solarBase, voidBase, _phaseLerp)!;
+    final bgPaint = Paint()..color = currentBase;
     canvas.drawRect(rect, bgPaint);
 
-    // 2. Sector Ambient Glow Vignette
+    // 2. Active Reality Aurora Nebula
+    final auroraColor = Color.lerp(
+      AppColors.solarAmber.withValues(alpha: 0.12),
+      AppColors.voidCyan.withValues(alpha: 0.12),
+      _phaseLerp,
+    )!;
+    final auroraY = _phaseLerp < 0.5 ? size.y * 0.85 : size.y * 0.15;
     final nebulaPaint = Paint()
       ..shader = Gradient.radial(
-        Offset(size.x * 0.5, size.y * 0.5),
-        size.x * 0.75,
-        [tier.color.withValues(alpha: 0.07), const Color(0x00000000)],
+        Offset(size.x * 0.5, auroraY),
+        size.x * 0.65,
+        [
+          auroraColor,
+          tier.color.withValues(alpha: 0.04),
+          const Color(0x00000000),
+        ],
+        [0.0, 0.5, 1.0],
       );
     canvas.drawRect(rect, nebulaPaint);
 
     // 3. High-Contrast Dual-Reality Grid
     final realityGrid = Color.lerp(
-      AppColors.solarAmber.withValues(alpha: 0.06),
-      AppColors.voidCyan.withValues(alpha: 0.06),
+      AppColors.solarAmber.withValues(alpha: 0.08),
+      AppColors.voidCyan.withValues(alpha: 0.08),
       _phaseLerp,
     )!;
     final gridColor = Color.lerp(
       realityGrid,
-      tier.color.withValues(alpha: 0.05),
+      tier.color.withValues(alpha: 0.06),
       0.35,
     )!;
 
