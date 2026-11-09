@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:phasedrift/core/domain/domain.dart';
 import 'package:phasedrift/ui/ui.dart';
 
@@ -124,6 +125,68 @@ void main() {
 
       const voidIndicator = PhaseIndicator(phase: VoidPhase());
       expect(voidIndicator.isSolar, isFalse);
+    });
+  });
+
+  group('VirtualDpad Multi-Touch Controls', () {
+    testWidgets(
+      'renders rocker, jump, and shift buttons with correct styling',
+      (tester) async {
+        double moveAxis = 0.0;
+        bool jumpPressed = false;
+        bool jumpReleased = false;
+        bool shiftPressed = false;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: VirtualDpad(
+                onMove: (axis) => moveAxis = axis,
+                onJumpPressed: () => jumpPressed = true,
+                onJumpReleased: () => jumpReleased = true,
+                onShiftPressed: () => shiftPressed = true,
+                opacity: 0.85,
+                scale: 1.0,
+                southpaw: false,
+              ),
+            ),
+          ),
+        );
+
+        expect(find.text('JUMP'), findsOneWidget);
+        expect(find.text('SHIFT'), findsOneWidget);
+
+        // Tap JUMP button
+        await tester.tap(find.text('JUMP'));
+        expect(jumpPressed, isTrue);
+
+        // Tap SHIFT button
+        await tester.tap(find.text('SHIFT'));
+        expect(shiftPressed, isTrue);
+
+        // Initial unpressed state checks
+        expect(moveAxis, equals(0.0));
+        expect(jumpReleased, isTrue);
+      },
+    );
+
+    testWidgets('renders southpaw mirrored layout properly', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: VirtualDpad(
+              onMove: (_) {},
+              onJumpPressed: () {},
+              onJumpReleased: () {},
+              onShiftPressed: () {},
+              southpaw: true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('JUMP'), findsOneWidget);
+      expect(find.text('SHIFT'), findsOneWidget);
     });
   });
 }

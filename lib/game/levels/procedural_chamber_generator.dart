@@ -331,17 +331,17 @@ abstract final class ProceduralChamberGenerator {
       directives.addAll([
         ChamberDirectiveData(
           position: Vector2(60, 220),
-          title: '[A / D] RUN',
-          subtitle: 'KINETIC ACCELERATION',
+          title: 'KINETIC RUN',
+          subtitle: 'ACCELERATE HORIZONTALLY',
         ),
         ChamberDirectiveData(
           position: Vector2(170, 190),
-          title: '[SPACE] JUMP',
+          title: 'JUMP IMPULSE',
           subtitle: 'HOLD FOR HEIGHT',
         ),
         ChamberDirectiveData(
           position: Vector2(290, 160),
-          title: '[SHIFT] DRIFT',
+          title: 'PHASE SHIFT',
           subtitle: 'INVERT REALITY',
         ),
         ChamberDirectiveData(
