@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flame/components.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -27,6 +29,7 @@ class PlayerComponent extends PositionComponent
 
   double squishX = 1.0;
   double squishY = 1.0;
+  final List<Vector2> _ghostTrail = [];
 
   @override
   void update(double dt) {
@@ -46,6 +49,17 @@ class PlayerComponent extends PositionComponent
 
     kinematics.update(dt, moveAxis: game.moveInput, solidObstacles: obstacles);
     position.setValues(kinematics.x, kinematics.y);
+
+    // Dynamic ghost trails during high-speed kinetic runs and slingshots
+    final speed = math.sqrt(
+      kinematics.vx * kinematics.vx + kinematics.vy * kinematics.vy,
+    );
+    if (speed > 130.0 && !game.reduceMotion) {
+      _ghostTrail.add(position.clone());
+      if (_ghostTrail.length > 4) _ghostTrail.removeAt(0);
+    } else if (_ghostTrail.isNotEmpty) {
+      _ghostTrail.removeAt(0);
+    }
 
     if (!wasGrounded && kinematics.isGrounded) {
       triggerLandingSquish();
@@ -95,6 +109,15 @@ class PlayerComponent extends PositionComponent
 
     final rect = Rect.fromLTWH(0, 0, size.x, size.y);
     final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(3.0));
+
+    // Render Speed Ghost Trails
+    for (var i = 0; i < _ghostTrail.length; i++) {
+      final ghost = _ghostTrail[i];
+      final alpha = (0.08 * (i + 1)).clamp(0.0, 0.35);
+      final ghostPaint = Paint()..color = phaseColor.withValues(alpha: alpha);
+      final offset = Offset(ghost.x - position.x, ghost.y - position.y);
+      canvas.drawRRect(rrect.shift(offset), ghostPaint);
+    }
 
     canvas.drawRRect(rrect, bodyPaint);
     canvas.drawRRect(rrect, rimPaint);
