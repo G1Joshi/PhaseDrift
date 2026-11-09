@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:phasedrift/core/domain/domain.dart';
 import 'package:phasedrift/core/services/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -110,5 +112,70 @@ void main() {
       expect(loaded.totalShifts, equals(2));
       expect(loaded.totalDeaths, equals(1));
     });
+
+    test('saves and restores mobile touch controller settings', () async {
+      // Default initial settings
+      final (defOpacity, defScale, defSouthpaw) = service.getTouchSettings();
+      expect(defOpacity, equals(0.85));
+      expect(defScale, equals(1.0));
+      expect(defSouthpaw, isFalse);
+
+      // Custom settings
+      await service.saveTouchSettings(
+        opacity: 0.65,
+        scale: 1.15,
+        southpaw: true,
+      );
+
+      final (savedOpacity, savedScale, savedSouthpaw) = service
+          .getTouchSettings();
+      expect(savedOpacity, closeTo(0.65, 0.001));
+      expect(savedScale, closeTo(1.15, 0.001));
+      expect(savedSouthpaw, isTrue);
+    });
+  });
+
+  group('AppPlatform Logic', () {
+    testWidgets(
+      'evaluates touch device heuristic based on platform and screen height',
+      (tester) async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Builder(
+              builder: (context) {
+                expect(AppPlatform.isMobile, isTrue);
+                expect(AppPlatform.isTouchDevice(context), isTrue);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+
+        debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+        tester.view.devicePixelRatio = 1.0;
+        tester.view.physicalSize = const Size(1280, 800);
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Builder(
+              builder: (context) {
+                expect(AppPlatform.isMobile, isFalse);
+                expect(AppPlatform.isTouchDevice(context), isFalse);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+
+        debugDefaultTargetPlatformOverride = null;
+      },
+    );
   });
 }

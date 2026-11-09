@@ -1,5 +1,6 @@
 import 'package:flame/game.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'core/audio/audio.dart';
@@ -12,6 +13,13 @@ import 'ui/ui.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await PersistenceService.instance.init();
+
+  // Configure native mobile immersive landscape mode
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
   // Restore persistent audio and tactile settings
   final (master, music, sfx, muted) = PersistenceService.instance
@@ -58,12 +66,20 @@ class _MainNavigationHarnessState extends State<MainNavigationHarness>
   AppRoute _currentRoute = AppRoute.title;
   ChamberDefinition _activeChamber = ChamberRegistry.getChamber(1);
   bool _reduceMotion = false;
+  double _touchOpacity = 0.85;
+  double _touchScale = 1.0;
+  bool _southpaw = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _reduceMotion = PersistenceService.instance.getReduceMotion();
+    final (opacity, scale, southpaw) = PersistenceService.instance
+        .getTouchSettings();
+    _touchOpacity = opacity;
+    _touchScale = scale;
+    _southpaw = southpaw;
   }
 
   @override
@@ -110,11 +126,20 @@ class _MainNavigationHarnessState extends State<MainNavigationHarness>
       AppRoute.settings => SettingsScreen(
         reduceMotion: _reduceMotion,
         onReduceMotionChanged: (val) => setState(() => _reduceMotion = val),
+        touchOpacity: _touchOpacity,
+        onTouchOpacityChanged: (val) => setState(() => _touchOpacity = val),
+        touchScale: _touchScale,
+        onTouchScaleChanged: (val) => setState(() => _touchScale = val),
+        southpaw: _southpaw,
+        onSouthpawChanged: (val) => setState(() => _southpaw = val),
         onBack: () => _navigateTo(AppRoute.title),
       ),
       AppRoute.gameplay => GameSessionView(
         chamber: _activeChamber,
         reduceMotion: _reduceMotion,
+        touchOpacity: _touchOpacity,
+        touchScale: _touchScale,
+        southpaw: _southpaw,
         onOpenSettings: () => _navigateTo(AppRoute.settings),
         onExitToMenu: () => _navigateTo(AppRoute.chamberSelect),
         onLoadChamber: _startChamber,
@@ -128,6 +153,9 @@ class GameSessionView extends StatefulWidget {
     super.key,
     required this.chamber,
     required this.reduceMotion,
+    this.touchOpacity = 0.85,
+    this.touchScale = 1.0,
+    this.southpaw = false,
     required this.onOpenSettings,
     required this.onExitToMenu,
     required this.onLoadChamber,
@@ -135,6 +163,9 @@ class GameSessionView extends StatefulWidget {
 
   final ChamberDefinition chamber;
   final bool reduceMotion;
+  final double touchOpacity;
+  final double touchScale;
+  final bool southpaw;
   final VoidCallback onOpenSettings;
   final VoidCallback onExitToMenu;
   final ValueChanged<ChamberDefinition> onLoadChamber;
@@ -192,133 +223,148 @@ class _GameSessionViewState extends State<GameSessionView>
       valueListenable: _game.phaseNotifier,
       builder: (context, activePhase, _) {
         final isSolar = activePhase is SolarPhase;
-        return AnimatedTheme(
-          data: isSolar ? AppTheme.solarTheme : AppTheme.voidTheme,
-          duration: const Duration(milliseconds: 250),
-          child: Scaffold(
-            backgroundColor: isSolar
-                ? const Color(0xFF090704)
-                : const Color(0xFF03070C),
-            body: MouseRegion(
-              cursor: SystemMouseCursors.basic,
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: () => _gameFocusNode.requestFocus(),
-                child: Stack(
-                  children: [
-                    // 1. Flame Game Engine Viewport
-                    GameWidget<PhaseDriftGame>(
-                      key: ValueKey('game_${widget.chamber.chamberId}'),
-                      game: _game,
-                      focusNode: _gameFocusNode,
-                      autofocus: true,
-                      overlayBuilderMap: {
-                        'PauseMenu': (context, game) => PauseMenu(
-                          onResume: () {
-                            game.resumeGame();
-                            setState(() {});
-                          },
-                          onRestart: () {
-                            game.restartChamber();
-                            setState(() {});
-                          },
-                          onSettings: widget.onOpenSettings,
-                          onQuit: widget.onExitToMenu,
-                          phase: game.player.kinematics.phase,
-                          chamberName: widget.chamber.name,
-                          chamberNumber: widget.chamber.chamberId,
-                        ),
-                        'VictoryScreen': (context, game) {
-                          final nextChamber = ChamberRegistry.getNextChamber(
-                            widget.chamber.chamberId,
-                            allowEndless: true,
-                          );
-                          return VictoryScreen(
-                            chamberId: widget.chamber.chamberId,
-                            chamberName: widget.chamber.name,
-                            clearTimeMs: game.elapsedMs,
-                            parTimeMs: widget.chamber.parTimeMs,
-                            shardsMask: game.shardsCollectedMask,
-                            nextChamberName: nextChamber?.name,
-                            nextParTimeMs: nextChamber?.parTimeMs,
-                            nextChamberTier: nextChamber?.tier.label,
-                            nextChamberTierColor: nextChamber?.tier.color,
-                            onRetry: () {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, _) {
+            if (didPop) return;
+            if (!_game.isPaused && !_game.isCompleted) {
+              _game.pauseGame();
+              setState(() {});
+            } else {
+              widget.onExitToMenu();
+            }
+          },
+          child: AnimatedTheme(
+            data: isSolar ? AppTheme.solarTheme : AppTheme.voidTheme,
+            duration: const Duration(milliseconds: 250),
+            child: Scaffold(
+              backgroundColor: isSolar
+                  ? const Color(0xFF090704)
+                  : const Color(0xFF03070C),
+              body: MouseRegion(
+                cursor: SystemMouseCursors.basic,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: () => _gameFocusNode.requestFocus(),
+                  child: Stack(
+                    children: [
+                      // 1. Flame Game Engine Viewport
+                      GameWidget<PhaseDriftGame>(
+                        key: ValueKey('game_${widget.chamber.chamberId}'),
+                        game: _game,
+                        focusNode: _gameFocusNode,
+                        autofocus: true,
+                        overlayBuilderMap: {
+                          'PauseMenu': (context, game) => PauseMenu(
+                            onResume: () {
+                              game.resumeGame();
+                              setState(() {});
+                            },
+                            onRestart: () {
                               game.restartChamber();
                               setState(() {});
                             },
-                            onNextChamber: nextChamber != null
-                                ? () => widget.onLoadChamber(nextChamber)
-                                : null,
-                            onChamberSelect: widget.onExitToMenu,
+                            onSettings: widget.onOpenSettings,
+                            onQuit: widget.onExitToMenu,
+                            phase: game.player.kinematics.phase,
+                            chamberName: widget.chamber.name,
+                            chamberNumber: widget.chamber.chamberId,
+                          ),
+                          'VictoryScreen': (context, game) {
+                            final nextChamber = ChamberRegistry.getNextChamber(
+                              widget.chamber.chamberId,
+                              allowEndless: true,
+                            );
+                            return VictoryScreen(
+                              chamberId: widget.chamber.chamberId,
+                              chamberName: widget.chamber.name,
+                              clearTimeMs: game.elapsedMs,
+                              parTimeMs: widget.chamber.parTimeMs,
+                              shardsMask: game.shardsCollectedMask,
+                              nextChamberName: nextChamber?.name,
+                              nextParTimeMs: nextChamber?.parTimeMs,
+                              nextChamberTier: nextChamber?.tier.label,
+                              nextChamberTierColor: nextChamber?.tier.color,
+                              onRetry: () {
+                                game.restartChamber();
+                                setState(() {});
+                              },
+                              onNextChamber: nextChamber != null
+                                  ? () => widget.onLoadChamber(nextChamber)
+                                  : null,
+                              onChamberSelect: widget.onExitToMenu,
+                            );
+                          },
+                        },
+                      ),
+
+                      // 2. Telemetry HUD Overlay
+                      ValueListenableBuilder<int>(
+                        valueListenable: _hudTicker,
+                        builder: (context, _, child) {
+                          if (!_game.isLoaded || _game.isCompleted) {
+                            return const SizedBox.shrink();
+                          }
+                          final activePhase = _game.player.kinematics.phase;
+                          final currentVx = _game.player.kinematics.vx;
+                          return TelemetryHud(
+                            chamberName: widget.chamber.name,
+                            chamberNumber: widget.chamber.chamberId,
+                            phase: activePhase,
+                            elapsedMs: _game.elapsedMs,
+                            bestTimeMs: widget.chamber.parTimeMs,
+                            shardsMask: _game.shardsCollectedMask,
+                            velocity: currentVx,
+                            maxVelocity: KinematicConstants.runSpeed,
+                            onPause: () {
+                              _game.pauseGame();
+                              setState(() {});
+                            },
                           );
                         },
-                      },
-                    ),
+                      ),
 
-                    // 2. Telemetry HUD Overlay
-                    ValueListenableBuilder<int>(
-                      valueListenable: _hudTicker,
-                      builder: (context, _, child) {
-                        if (!_game.isLoaded || _game.isCompleted) {
-                          return const SizedBox.shrink();
-                        }
-                        final activePhase = _game.player.kinematics.phase;
-                        final currentVx = _game.player.kinematics.vx;
-                        return TelemetryHud(
-                          chamberName: widget.chamber.name,
-                          chamberNumber: widget.chamber.chamberId,
-                          phase: activePhase,
-                          elapsedMs: _game.elapsedMs,
-                          bestTimeMs: widget.chamber.parTimeMs,
-                          shardsMask: _game.shardsCollectedMask,
-                          velocity: currentVx,
-                          maxVelocity: KinematicConstants.runSpeed,
-                          onPause: () {
-                            _game.pauseGame();
-                            setState(() {});
-                          },
-                        );
-                      },
-                    ),
+                      // 3. Virtual Mobile / Touch D-pad
+                      ValueListenableBuilder<int>(
+                        valueListenable: _hudTicker,
+                        builder: (context, _, child) {
+                          if (!_game.isLoaded ||
+                              _game.isPaused ||
+                              _game.isCompleted) {
+                            return const SizedBox.shrink();
+                          }
+                          final activePhase = _game.player.kinematics.phase;
+                          return VirtualDpad(
+                            phase: activePhase,
+                            opacity: widget.touchOpacity,
+                            scale: widget.touchScale,
+                            southpaw: widget.southpaw,
+                            onMove: (axis) =>
+                                _game.inputController.setMoveAxis(axis),
+                            onJumpPressed: () =>
+                                _game.inputController.pressJump(),
+                            onJumpReleased: () =>
+                                _game.inputController.releaseJump(),
+                            onShiftPressed: () {
+                              _game.inputController.triggerShift();
+                            },
+                          );
+                        },
+                      ),
 
-                    // 3. Virtual Mobile / Touch D-pad
-                    ValueListenableBuilder<int>(
-                      valueListenable: _hudTicker,
-                      builder: (context, _, child) {
-                        if (!_game.isLoaded ||
-                            _game.isPaused ||
-                            _game.isCompleted) {
-                          return const SizedBox.shrink();
-                        }
-                        final activePhase = _game.player.kinematics.phase;
-                        return VirtualDpad(
-                          phase: activePhase,
-                          onMove: (axis) =>
-                              _game.inputController.setMoveAxis(axis),
-                          onJumpPressed: () =>
-                              _game.inputController.pressJump(),
-                          onJumpReleased: () =>
-                              _game.inputController.releaseJump(),
-                          onShiftPressed: () {
-                            _game.inputController.triggerShift();
-                          },
-                        );
-                      },
-                    ),
+                      // 4. Tactical Milestone Toast Overlay
+                      const MilestoneToastOverlay(),
 
-                    // 4. Tactical Milestone Toast Overlay
-                    const MilestoneToastOverlay(),
+                      // 5. Arcade Chamber Intro Telemetry Splash
+                      ChamberIntroOverlay(
+                        key: ValueKey('intro_${widget.chamber.chamberId}'),
+                        chamber: widget.chamber,
+                      ),
 
-                    // 5. Arcade Chamber Intro Telemetry Splash
-                    ChamberIntroOverlay(
-                      key: ValueKey('intro_${widget.chamber.chamberId}'),
-                      chamber: widget.chamber,
-                    ),
-
-                    // 6. Reality Warp Radial Flash Overlay
-                    RealityWarpFlash(phase: activePhase),
-                  ],
+                      // 6. Reality Warp Radial Flash Overlay
+                      RealityWarpFlash(phase: activePhase),
+                    ],
+                  ),
                 ),
               ),
             ),

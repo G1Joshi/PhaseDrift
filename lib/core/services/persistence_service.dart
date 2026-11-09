@@ -81,6 +81,9 @@ class PersistenceService {
   static const String _mutedKey = 'phasedrift_audio_muted';
   static const String _hapticsKey = 'phasedrift_haptics_enabled';
   static const String _reduceMotionKey = 'phasedrift_reduce_motion';
+  static const String _touchOpacityKey = 'phasedrift_touch_opacity';
+  static const String _touchScaleKey = 'phasedrift_touch_scale';
+  static const String _southpawKey = 'phasedrift_southpaw_mode';
 
   Future<bool> saveAudioSettings({
     required double master,
@@ -119,6 +122,25 @@ class PersistenceService {
   bool getReduceMotion() {
     if (_preferences == null) return false;
     return _prefs.getBool(_reduceMotionKey) ?? false;
+  }
+
+  Future<bool> saveTouchSettings({
+    required double opacity,
+    required double scale,
+    required bool southpaw,
+  }) async {
+    if (_preferences == null) return false;
+    await _prefs.setDouble(_touchOpacityKey, opacity);
+    await _prefs.setDouble(_touchScaleKey, scale);
+    return _prefs.setBool(_southpawKey, southpaw);
+  }
+
+  (double opacity, double scale, bool southpaw) getTouchSettings() {
+    if (_preferences == null) return (0.85, 1.0, false);
+    final opacity = _prefs.getDouble(_touchOpacityKey) ?? 0.85;
+    final scale = _prefs.getDouble(_touchScaleKey) ?? 1.0;
+    final southpaw = _prefs.getBool(_southpawKey) ?? false;
+    return (opacity, scale, southpaw);
   }
 
   Future<bool> saveMilestones(Map<String, dynamic> data) async {
