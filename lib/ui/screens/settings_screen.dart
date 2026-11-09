@@ -11,11 +11,23 @@ class SettingsScreen extends StatefulWidget {
     this.onBack,
     this.reduceMotion = false,
     this.onReduceMotionChanged,
+    this.touchOpacity = 0.85,
+    this.onTouchOpacityChanged,
+    this.touchScale = 1.0,
+    this.onTouchScaleChanged,
+    this.southpaw = false,
+    this.onSouthpawChanged,
   });
 
   final VoidCallback? onBack;
   final bool reduceMotion;
   final ValueChanged<bool>? onReduceMotionChanged;
+  final double touchOpacity;
+  final ValueChanged<double>? onTouchOpacityChanged;
+  final double touchScale;
+  final ValueChanged<double>? onTouchScaleChanged;
+  final bool southpaw;
+  final ValueChanged<bool>? onSouthpawChanged;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -33,6 +45,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late bool _isMuted;
   late bool _hapticsEnabled;
   late bool _reduceMotion;
+  late double _touchOpacity;
+  late double _touchScale;
+  late bool _southpaw;
 
   @override
   void initState() {
@@ -43,9 +58,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _isMuted = _audio.isMuted;
     _hapticsEnabled = _haptics.isEnabled;
     _reduceMotion = widget.reduceMotion;
+    final (opacity, scale, southpaw) = _persistence.getTouchSettings();
+    _touchOpacity = opacity;
+    _touchScale = scale;
+    _southpaw = southpaw;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _focusNode.requestFocus();
     });
+  }
+
+  void _saveTouchSettings() {
+    _persistence.saveTouchSettings(
+      opacity: _touchOpacity,
+      scale: _touchScale,
+      southpaw: _southpaw,
+    );
   }
 
   @override
@@ -169,6 +196,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildScaleChip(String label, double scaleVal) {
+    final isSelected = (_touchScale - scaleVal).abs() < 0.05;
+    return InkWell(
+      onTap: () {
+        setState(() => _touchScale = scaleVal);
+        _saveTouchSettings();
+        widget.onTouchScaleChanged?.call(scaleVal);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
+        decoration: ShapeDecoration(
+          color: isSelected
+              ? AppColors.solarAmber.withValues(alpha: 0.2)
+              : AppColors.canvasDark,
+          shape: AppDecorations.chamferShape(
+            chamfer: AppDecorations.chamferXs,
+            borderColor: isSelected
+                ? AppColors.solarAmber
+                : AppColors.structuralSeam,
+          ),
+        ),
+        child: Text(
+          label,
+          style: AppTypography.telemetryLabel.copyWith(
+            color: isSelected
+                ? AppColors.solarAmber
+                : AppColors.onSurfaceVariant,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+            fontSize: 9.5,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -281,6 +343,74 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             },
                           ),
 
+                          // Mobile Touch Controls Section
+                          _buildSectionHeader('MOBILE TOUCH CONTROLS'),
+                          _buildSliderRow(
+                            label: 'TOUCH OPACITY',
+                            value: _touchOpacity,
+                            onChanged: (val) {
+                              setState(
+                                () => _touchOpacity = val.clamp(0.2, 1.0),
+                              );
+                              _saveTouchSettings();
+                              widget.onTouchOpacityChanged?.call(_touchOpacity);
+                            },
+                          ),
+                          Container(
+                            margin: const EdgeInsets.symmetric(vertical: 4.0),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14.0,
+                              vertical: 10.0,
+                            ),
+                            decoration: AppDecorations.hudModule(),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'CONTROLLER SCALE',
+                                        style: AppTypography.button.copyWith(
+                                          fontSize: 13.0,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2.0),
+                                      Text(
+                                        'Adjust touch rocker and button sizing',
+                                        style: AppTypography.telemetryLabel
+                                            .copyWith(fontSize: 10.0),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8.0),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildScaleChip('0.85x', 0.85),
+                                    const SizedBox(width: 6.0),
+                                    _buildScaleChip('1.0x', 1.0),
+                                    const SizedBox(width: 6.0),
+                                    _buildScaleChip('1.15x', 1.15),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          _buildToggleRow(
+                            label: 'SOUTHPAW MODE',
+                            subtitle: 'Left-handed layout: swaps D-pad and action buttons',
+                            value: _southpaw,
+                            onChanged: (val) {
+                              setState(() => _southpaw = val);
+                              _saveTouchSettings();
+                              widget.onSouthpawChanged?.call(val);
+                            },
+                          ),
+
                           // Accessibility Section
                           _buildSectionHeader('ACCESSIBILITY'),
                           _buildToggleRow(
@@ -349,6 +479,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                    const SizedBox(height: 10.0),
+                    Center(
+                      child: Text(
+                        AppPlatform.isTouchDevice(context)
+                            ? 'TAP BACK ARROW TO RETURN'
+                            : '[ESC / BACKSPACE] RETURN TO MAIN MENU',
+                        style: AppTypography.telemetryLabel.copyWith(
+                          fontSize: 9.0,
+                          color: AppColors.onSurfaceVariant.withValues(
+                            alpha: 0.7,
+                          ),
+                          letterSpacing: 1.2,
+                        ),
                       ),
                     ),
                   ],
