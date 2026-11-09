@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/domain/domain.dart';
@@ -5,6 +6,7 @@ import '../../core/services/services.dart';
 import '../../core/theme/theme.dart';
 import '../../game/levels/levels.dart';
 import '../hud/split_stopwatch.dart';
+import '../overlays/milestones_dialog.dart';
 
 class ChamberSelectScreen extends StatefulWidget {
   const ChamberSelectScreen({
@@ -24,8 +26,12 @@ class ChamberSelectScreen extends StatefulWidget {
 
 class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
   final List<ChamberDefinition> _chambers = ChamberRegistry.allChambers;
+  final FocusNode _focusNode = FocusNode();
   Map<int, ChamberRecord> _records = {};
   ChamberTier? _selectedSector;
+  int _unlockedMilestonesCount = 0;
+  int _focusedSector = 0;
+  int _focusedChamberIndex = 0;
   bool _isLoading = true;
 
   @override
@@ -33,17 +39,121 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
     super.initState();
     _selectedSector = widget.initialSector;
     _loadProgress();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
   }
 
   Future<void> _loadProgress() async {
     final list = await ProgressionService.instance.loadAllRecords(
       _chambers.length,
     );
+    final count = await MilestoneService.instance.getUnlockedCount();
     if (!mounted) return;
     setState(() {
       _records = {for (final r in list) r.chamberId: r};
+      _unlockedMilestonesCount = count;
       _isLoading = false;
     });
+  }
+
+  void _handleKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return;
+    if (event.logicalKey == LogicalKeyboardKey.keyM) {
+      MilestonesDialog.show(context);
+      return;
+    }
+
+    if (_selectedSector == null) {
+      if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
+          event.logicalKey == LogicalKeyboardKey.keyS) {
+        setState(() => _focusedSector = (_focusedSector + 2).clamp(0, 5));
+      } else if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
+          event.logicalKey == LogicalKeyboardKey.keyW) {
+        setState(() => _focusedSector = (_focusedSector - 2).clamp(0, 5));
+      } else if (event.logicalKey == LogicalKeyboardKey.arrowRight ||
+          event.logicalKey == LogicalKeyboardKey.keyD) {
+        setState(() => _focusedSector = (_focusedSector + 1).clamp(0, 5));
+      } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+          event.logicalKey == LogicalKeyboardKey.keyA) {
+        setState(() => _focusedSector = (_focusedSector - 1).clamp(0, 5));
+      } else if (event.logicalKey == LogicalKeyboardKey.enter ||
+          event.logicalKey == LogicalKeyboardKey.space) {
+        setState(() {
+          _selectedSector = _focusedSector == 5
+              ? ChamberTier.endless
+              : ChamberTier.values[_focusedSector];
+          _focusedChamberIndex = 0;
+        });
+      } else if (event.logicalKey == LogicalKeyboardKey.escape ||
+          event.logicalKey == LogicalKeyboardKey.backspace) {
+        widget.onBack?.call();
+      }
+    } else {
+      final displayed = _chambers
+          .where((c) => c.tier == _selectedSector)
+          .toList();
+      final showQuantum = _selectedSector == ChamberTier.endless;
+      final totalItems = displayed.length + (showQuantum ? 1 : 0);
+
+      if (event.logicalKey == LogicalKeyboardKey.arrowRight ||
+          event.logicalKey == LogicalKeyboardKey.keyD) {
+        setState(
+          () => _focusedChamberIndex = (_focusedChamberIndex + 1).clamp(
+            0,
+            totalItems - 1,
+          ),
+        );
+      } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+          event.logicalKey == LogicalKeyboardKey.keyA) {
+        setState(
+          () => _focusedChamberIndex = (_focusedChamberIndex - 1).clamp(
+            0,
+            totalItems - 1,
+          ),
+        );
+      } else if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
+          event.logicalKey == LogicalKeyboardKey.keyS) {
+        setState(
+          () => _focusedChamberIndex = (_focusedChamberIndex + 2).clamp(
+            0,
+            totalItems - 1,
+          ),
+        );
+      } else if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
+          event.logicalKey == LogicalKeyboardKey.keyW) {
+        setState(
+          () => _focusedChamberIndex = (_focusedChamberIndex - 2).clamp(
+            0,
+            totalItems - 1,
+          ),
+        );
+      } else if (event.logicalKey == LogicalKeyboardKey.enter ||
+          event.logicalKey == LogicalKeyboardKey.space) {
+        if (_focusedChamberIndex < displayed.length) {
+          final c = displayed[_focusedChamberIndex];
+          final firstInSector = ProgressionService.isFirstChamberOfSector(
+            c.chamberId,
+          );
+          final isUnlocked =
+              (_records[c.chamberId]?.isUnlocked ?? false) || firstInSector;
+          if (isUnlocked) {
+            widget.onSelectChamber(c);
+          }
+        } else if (showQuantum) {
+          widget.onSelectChamber(ChamberRegistry.getRandomChamber());
+        }
+      } else if (event.logicalKey == LogicalKeyboardKey.escape ||
+          event.logicalKey == LogicalKeyboardKey.backspace) {
+        setState(() => _selectedSector = null);
+      }
+    }
   }
 
   int _getSectorClearedCount(ChamberTier tier) {
@@ -61,7 +171,7 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
     );
   }
 
-  Widget _buildSectorCard(ChamberTier tier) {
+  Widget _buildSectorCard(ChamberTier tier, {bool isFocused = false}) {
     final clearedCount = _getSectorClearedCount(tier);
     final shardsCount = _getSectorShardsCount(tier);
     final sectorNumber = tier.index + 1;
@@ -78,13 +188,18 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
     };
 
     final isFullyCleared = clearedCount == 10;
-    final borderColor = isFullyCleared ? tier.color : AppColors.border;
+    final borderColor = isFocused
+        ? AppColors.voidCyan
+        : (isFullyCleared ? tier.color : AppColors.border);
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          setState(() => _selectedSector = tier);
+          setState(() {
+            _selectedSector = tier;
+            _focusedChamberIndex = 0;
+          });
         },
         customBorder: AppDecorations.chamferShape(
           chamfer: AppDecorations.chamferMd,
@@ -96,14 +211,22 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
             shape: AppDecorations.chamferShape(
               chamfer: AppDecorations.chamferMd,
               borderColor: borderColor,
-              borderWidth: isFullyCleared ? 1.5 : 1.0,
+              borderWidth: isFocused ? 2.0 : (isFullyCleared ? 1.5 : 1.0),
             ),
-            shadows: [
-              BoxShadow(
-                color: tier.color.withValues(alpha: 0.12),
-                blurRadius: 16.0,
-              ),
-            ],
+            shadows: isFocused
+                ? [
+                    BoxShadow(
+                      color: AppColors.voidCyan.withValues(alpha: 0.45),
+                      blurRadius: 20.0,
+                      spreadRadius: 1.0,
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: tier.color.withValues(alpha: 0.12),
+                      blurRadius: 16.0,
+                    ),
+                  ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -268,7 +391,10 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
     );
   }
 
-  Widget _buildChamberCard(ChamberDefinition chamber) {
+  Widget _buildChamberCard(
+    ChamberDefinition chamber, {
+    bool isFocused = false,
+  }) {
     final firstInSector = ProgressionService.isFirstChamberOfSector(
       chamber.chamberId,
     );
@@ -287,9 +413,11 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
       );
     }
 
-    final borderColor = isCleared
-        ? (rank?.color ?? AppColors.voidCyan)
-        : (isUnlocked ? AppColors.border : AppColors.structuralSeam);
+    final borderColor = isFocused
+        ? AppColors.voidCyan
+        : (isCleared
+              ? (rank?.color ?? AppColors.voidCyan)
+              : (isUnlocked ? AppColors.border : AppColors.structuralSeam));
 
     final chamberCode =
         'CHAMBER ${chamber.chamberId.toString().padLeft(2, '0')}';
@@ -310,16 +438,24 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
             shape: AppDecorations.chamferShape(
               chamfer: AppDecorations.chamferMd,
               borderColor: borderColor,
-              borderWidth: isCleared ? 1.5 : 1.0,
+              borderWidth: isFocused ? 2.0 : (isCleared ? 1.5 : 1.0),
             ),
-            shadows: isCleared && rank != null
+            shadows: isFocused
                 ? [
                     BoxShadow(
-                      color: rank.color.withValues(alpha: 0.15),
-                      blurRadius: 16.0,
+                      color: AppColors.voidCyan.withValues(alpha: 0.45),
+                      blurRadius: 20.0,
+                      spreadRadius: 1.0,
                     ),
                   ]
-                : null,
+                : (isCleared && rank != null
+                      ? [
+                          BoxShadow(
+                            color: rank.color.withValues(alpha: 0.15),
+                            blurRadius: 16.0,
+                          ),
+                        ]
+                      : null),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -477,7 +613,7 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
     );
   }
 
-  Widget _buildQuantumDriftCard() {
+  Widget _buildQuantumDriftCard({bool isFocused = false}) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -492,14 +628,22 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
             shape: AppDecorations.chamferShape(
               chamfer: AppDecorations.chamferMd,
               borderColor: AppColors.voidCyan,
-              borderWidth: 1.5,
+              borderWidth: isFocused ? 2.0 : 1.5,
             ),
-            shadows: [
-              BoxShadow(
-                color: AppColors.voidCyan.withValues(alpha: 0.20),
-                blurRadius: 16.0,
-              ),
-            ],
+            shadows: isFocused
+                ? [
+                    BoxShadow(
+                      color: AppColors.voidCyan.withValues(alpha: 0.45),
+                      blurRadius: 20.0,
+                      spreadRadius: 1.0,
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: AppColors.voidCyan.withValues(alpha: 0.20),
+                      blurRadius: 16.0,
+                    ),
+                  ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -633,166 +777,239 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.obsidianVoid,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Top Bar
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back,
-                      color: AppColors.onSurface,
-                    ),
-                    onPressed: () {
-                      if (inSectorView) {
-                        setState(() => _selectedSector = null);
-                      } else {
-                        widget.onBack?.call();
-                      }
-                    },
-                  ),
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          inSectorView
-                              ? _selectedSector!.sectorName
-                              : 'CHAMBER MATRIX // SECTOR DIRECTORY',
-                          style: AppTypography.titleChamber.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 2.0,
-                            fontSize: 16.0,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          inSectorView
-                              ? 'SECTOR // ${_getSectorClearedCount(_selectedSector!)}/10 CLEARED // ${_getSectorShardsCount(_selectedSector!)}/30 SHARDS'
-                              : 'CAMPAIGN // $clearedCount/${_chambers.length} CLEARED // $totalShards/${_chambers.length * 3} SHARDS',
-                          style: AppTypography.telemetryLabel.copyWith(
-                            color: inSectorView
-                                ? _selectedSector!.color
-                                : AppColors.solarAmber,
-                            fontSize: 10.0,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 48.0),
-                ],
-              ),
-              const SizedBox(height: 16.0),
-
-              // Sector Quick-Switcher Tabs
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
+      body: KeyboardListener(
+        focusNode: _focusNode,
+        autofocus: true,
+        onKeyEvent: _handleKeyEvent,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 16.0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top Bar
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildSectorSwitchChip(
-                      label: 'ALL SECTORS',
-                      isSelected: _selectedSector == null,
-                      onTap: () => setState(() => _selectedSector = null),
-                    ),
-                    for (final tier in [
-                      ChamberTier.veryEasy,
-                      ChamberTier.easy,
-                      ChamberTier.medium,
-                      ChamberTier.hard,
-                      ChamberTier.veryHard,
-                    ]) ...[
-                      const SizedBox(width: 8.0),
-                      _buildSectorSwitchChip(
-                        label: 'SEC 0${tier.index + 1}: ${tier.label}',
-                        isSelected: _selectedSector == tier,
-                        onTap: () => setState(() => _selectedSector = tier),
-                        color: tier.color,
+                    IconButton(
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: AppColors.onSurface,
                       ),
-                    ],
-                    const SizedBox(width: 8.0),
-                    _buildSectorSwitchChip(
-                      label: 'QUANTUM DRIFT',
-                      isSelected: _selectedSector == ChamberTier.endless,
-                      onTap: () =>
-                          setState(() => _selectedSector = ChamberTier.endless),
-                      color: ChamberTier.endless.color,
+                      onPressed: () {
+                        if (inSectorView) {
+                          setState(() => _selectedSector = null);
+                        } else {
+                          widget.onBack?.call();
+                        }
+                      },
+                    ),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            inSectorView
+                                ? _selectedSector!.sectorName
+                                : 'CHAMBER MATRIX // SECTOR DIRECTORY',
+                            style: AppTypography.titleChamber.copyWith(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 2.0,
+                              fontSize: 16.0,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            inSectorView
+                                ? 'SECTOR // ${_getSectorClearedCount(_selectedSector!)}/10 CLEARED // ${_getSectorShardsCount(_selectedSector!)}/30 SHARDS'
+                                : 'CAMPAIGN // $clearedCount/${_chambers.length} CLEARED // $totalShards/${_chambers.length * 3} SHARDS',
+                            style: AppTypography.telemetryLabel.copyWith(
+                              color: inSectorView
+                                  ? _selectedSector!.color
+                                  : AppColors.solarAmber,
+                              fontSize: 10.0,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => MilestonesDialog.show(context).then((_) {
+                          if (mounted) _loadProgress();
+                        }),
+                        customBorder: AppDecorations.chamferShape(
+                          chamfer: AppDecorations.chamferXs,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8.0,
+                            vertical: 5.0,
+                          ),
+                          decoration: ShapeDecoration(
+                            color: AppColors.cardSurface,
+                            shape: AppDecorations.chamferShape(
+                              chamfer: AppDecorations.chamferXs,
+                              borderColor: AppColors.voidCyan,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.emoji_events,
+                                size: 14.0,
+                                color: AppColors.solarGold,
+                              ),
+                              const SizedBox(width: 4.0),
+                              Text(
+                                '$_unlockedMilestonesCount/16',
+                                style: AppTypography.telemetryLabel.copyWith(
+                                  color: AppColors.voidCyan,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 9.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 16.0),
+                const SizedBox(height: 16.0),
 
-              // Content Area: Either Sector Cards OR Chamber Cards
-              Expanded(
-                child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.solarAmber,
-                        ),
-                      )
-                    : inSectorView
-                    // LEVEL 2: CHAMBER GRID FOR SELECTED SECTOR
-                    ? LayoutBuilder(
-                        builder: (context, constraints) {
-                          final crossAxisCount = constraints.maxWidth > 900
-                              ? 4
-                              : (constraints.maxWidth > 600 ? 3 : 2);
-                          return GridView.builder(
-                            gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: crossAxisCount,
-                                  crossAxisSpacing: 16.0,
-                                  mainAxisSpacing: 16.0,
-                                  childAspectRatio: 1.25,
-                                ),
-                            itemCount: chamberGridCount,
-                            itemBuilder: (context, index) {
-                              if (showQuantumCard &&
-                                  index == displayedChambers.length) {
-                                return _buildQuantumDriftCard();
-                              }
-                              final chamber = displayedChambers[index];
-                              return _buildChamberCard(chamber);
-                            },
-                          );
-                        },
-                      )
-                    // LEVEL 1: SECTORS DIRECTORY (EQUAL GRID)
-                    : LayoutBuilder(
-                        builder: (context, constraints) {
-                          final crossAxisCount = constraints.maxWidth > 900
-                              ? 4
-                              : (constraints.maxWidth > 600 ? 3 : 2);
-                          return GridView.builder(
-                            gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: crossAxisCount,
-                                  crossAxisSpacing: 16.0,
-                                  mainAxisSpacing: 16.0,
-                                  childAspectRatio: 1.25,
-                                ),
-                            itemCount: 6,
-                            itemBuilder: (context, index) {
-                              if (index == 5) {
-                                return _buildQuantumDriftCard();
-                              }
-                              final tier = ChamberTier.values[index];
-                              return _buildSectorCard(tier);
-                            },
-                          );
-                        },
+                // Sector Quick-Switcher Tabs
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildSectorSwitchChip(
+                        label: 'ALL SECTORS',
+                        isSelected: _selectedSector == null,
+                        onTap: () => setState(() => _selectedSector = null),
                       ),
-              ),
-            ],
+                      for (final tier in [
+                        ChamberTier.veryEasy,
+                        ChamberTier.easy,
+                        ChamberTier.medium,
+                        ChamberTier.hard,
+                        ChamberTier.veryHard,
+                      ]) ...[
+                        const SizedBox(width: 8.0),
+                        _buildSectorSwitchChip(
+                          label: 'SEC 0${tier.index + 1}: ${tier.label}',
+                          isSelected: _selectedSector == tier,
+                          onTap: () => setState(() => _selectedSector = tier),
+                          color: tier.color,
+                        ),
+                      ],
+                      const SizedBox(width: 8.0),
+                      _buildSectorSwitchChip(
+                        label: 'QUANTUM DRIFT',
+                        isSelected: _selectedSector == ChamberTier.endless,
+                        onTap: () => setState(
+                          () => _selectedSector = ChamberTier.endless,
+                        ),
+                        color: ChamberTier.endless.color,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16.0),
+
+                // Content Area: Either Sector Cards OR Chamber Cards
+                Expanded(
+                  child: _isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.solarAmber,
+                          ),
+                        )
+                      : inSectorView
+                      // LEVEL 2: CHAMBER GRID FOR SELECTED SECTOR
+                      ? LayoutBuilder(
+                          builder: (context, constraints) {
+                            final crossAxisCount = constraints.maxWidth > 900
+                                ? 4
+                                : (constraints.maxWidth > 600 ? 3 : 2);
+                            return GridView.builder(
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: crossAxisCount,
+                                    crossAxisSpacing: 16.0,
+                                    mainAxisSpacing: 16.0,
+                                    childAspectRatio: 1.25,
+                                  ),
+                              itemCount: chamberGridCount,
+                              itemBuilder: (context, index) {
+                                if (showQuantumCard &&
+                                    index == displayedChambers.length) {
+                                  return _buildQuantumDriftCard(
+                                    isFocused: index == _focusedChamberIndex,
+                                  );
+                                }
+                                final chamber = displayedChambers[index];
+                                return _buildChamberCard(
+                                  chamber,
+                                  isFocused: index == _focusedChamberIndex,
+                                );
+                              },
+                            );
+                          },
+                        )
+                      // LEVEL 1: SECTORS DIRECTORY (EQUAL GRID)
+                      : LayoutBuilder(
+                          builder: (context, constraints) {
+                            final crossAxisCount = constraints.maxWidth > 900
+                                ? 4
+                                : (constraints.maxWidth > 600 ? 3 : 2);
+                            return GridView.builder(
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: crossAxisCount,
+                                    crossAxisSpacing: 16.0,
+                                    mainAxisSpacing: 16.0,
+                                    childAspectRatio: 1.25,
+                                  ),
+                              itemCount: 6,
+                              itemBuilder: (context, index) {
+                                if (index == 5) {
+                                  return _buildQuantumDriftCard(
+                                    isFocused: index == _focusedSector,
+                                  );
+                                }
+                                final tier = ChamberTier.values[index];
+                                return _buildSectorCard(
+                                  tier,
+                                  isFocused: index == _focusedSector,
+                                );
+                              },
+                            );
+                          },
+                        ),
+                ),
+                const SizedBox(height: 10.0),
+                Center(
+                  child: Text(
+                    '[WASD / ARROWS] NAVIGATE  \u2022  [SPACE/ENTER] SELECT  \u2022  [ESC] RETURN  \u2022  [M] BADGES',
+                    style: AppTypography.telemetryLabel.copyWith(
+                      fontSize: 8.5,
+                      color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
+                      letterSpacing: 1.2,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
