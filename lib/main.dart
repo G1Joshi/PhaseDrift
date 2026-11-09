@@ -170,6 +170,7 @@ class _GameSessionViewState extends State<GameSessionView>
               'VictoryScreen': (context, game) {
                 final nextChamber = ChamberRegistry.getNextChamber(
                   widget.chamber.chamberId,
+                  allowEndless: true,
                 );
                 return VictoryScreen(
                   chamberId: widget.chamber.chamberId,
@@ -177,6 +178,10 @@ class _GameSessionViewState extends State<GameSessionView>
                   clearTimeMs: game.elapsedMs,
                   parTimeMs: widget.chamber.parTimeMs,
                   shardsMask: game.shardsCollectedMask,
+                  nextChamberName: nextChamber?.name,
+                  nextParTimeMs: nextChamber?.parTimeMs,
+                  nextChamberTier: nextChamber?.tier.label,
+                  nextChamberTierColor: nextChamber?.tier.color,
                   onRetry: () {
                     game.restartChamber();
                     setState(() {});

@@ -1,7 +1,25 @@
+import 'dart:ui';
+
 import 'package:flame/components.dart';
 
 import '../../core/domain/domain.dart';
 import '../components/environment/hazard_spike.dart';
+
+export '../components/environment/hazard_spike.dart' show SpikeOrientation;
+
+enum ChamberTier {
+  veryEasy('VERY EASY', Color(0xFF00E676), 'SECTOR 1 // SOLAR DAWN'),
+  easy('EASY', Color(0xFF00F5FF), 'SECTOR 2 // VOID CHASM'),
+  medium('MEDIUM', Color(0xFFFF9E00), 'SECTOR 3 // TACHYON SURGE'),
+  hard('HARD', Color(0xFFE040FB), 'SECTOR 4 // PULSAR RIFT'),
+  veryHard('VERY HARD', Color(0xFFFF1744), 'SECTOR 5 // GRAND SINGULARITY'),
+  endless('QUANTUM', Color(0xFFD500F9), 'ANOMALY // QUANTUM DRIFT');
+
+  const ChamberTier(this.label, this.color, this.sectorName);
+  final String label;
+  final Color color;
+  final String sectorName;
+}
 
 class PhaseBlockData {
   const PhaseBlockData({
@@ -54,8 +72,10 @@ class ChamberDefinition {
     required this.name,
     required this.spawnPoint,
     required this.portalPosition,
+    this.topologyName = 'KINETIC SPRINT',
     this.description = '',
     this.parTimeMs = 15000,
+    this.tier = ChamberTier.medium,
     this.width = 560.0,
     this.height = 320.0,
     this.universalBlocks = const [],
@@ -67,8 +87,10 @@ class ChamberDefinition {
 
   final int chamberId;
   final String name;
+  final String topologyName;
   final String description;
   final int parTimeMs;
+  final ChamberTier tier;
   final Vector2 spawnPoint;
   final Vector2 portalPosition;
   final double width;

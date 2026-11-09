@@ -21,18 +21,28 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
   final Vector2? initialPlayerPosition;
   final ChamberDefinition? chamber;
 
-  late final PlayerComponent player;
+  PlayerComponent? _player;
+  PlayerComponent get player => _player!;
   late final InputController inputController;
   final ScreenShake screenShake = ScreenShake();
 
   double moveInput = 0.0;
   double elapsedTime = 0.0;
+  bool isTimerStarted = false;
   int shardsCollectedMask = 0;
   bool isPaused = false;
   bool isCompleted = false;
   bool reduceMotion = false;
 
   int get elapsedMs => (elapsedTime * 1000).toInt();
+
+  int get shardsCollectedCount {
+    var count = 0;
+    if ((shardsCollectedMask & 1) != 0) count++;
+    if ((shardsCollectedMask & 2) != 0) count++;
+    if ((shardsCollectedMask & 4) != 0) count++;
+    return count;
+  }
 
   void setReduceMotion(bool value) {
     reduceMotion = value;
@@ -57,13 +67,17 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     }
 
     final spawn = def?.spawnPoint ?? initialPlayerPosition ?? Vector2(100, 200);
-    player = PlayerComponent(initialPosition: spawn);
-    world.add(player);
-    camera.follow(player);
+    _player = PlayerComponent(initialPosition: spawn);
+    world.add(_player!);
+    camera.follow(_player!);
 
     inputController = InputController(
-      onMoveChanged: (axis) => moveInput = axis,
+      onMoveChanged: (axis) {
+        moveInput = axis;
+        if (axis.abs() > 0.05) isTimerStarted = true;
+      },
       onJumpPressed: () {
+        isTimerStarted = true;
         player.kinematics.pressJump();
         player.triggerJumpSquish();
         AudioEngine.instance.playJump();
@@ -73,10 +87,12 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
         player.kinematics.releaseJump();
       },
       onShiftPressed: () {
+        isTimerStarted = true;
+        final highSpeed = player.kinematics.vy.abs() > 180.0;
         player.kinematics.triggerShift();
         AudioEngine.instance.playShift();
         AudioEngine.instance.crossfadeToPhase(player.kinematics.phase);
-        screenShake.addTrauma(0.35);
+        screenShake.addTrauma(highSpeed ? 0.45 : 0.25);
         HapticsService.instance.triggerShift();
         if (!reduceMotion) {
           world.add(
@@ -86,15 +102,30 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
               accentColor: player.kinematics.phase.accentColor,
             ),
           );
+          if (highSpeed) {
+            world.addAll(
+              ParticleFactory.createLandingBurst(
+                position: player.position.clone(),
+                color: player.kinematics.phase.primaryColor,
+                count: 14,
+              ),
+            );
+          }
         }
       },
       onPausePressed: () {
         togglePause();
       },
+      onRestartPressed: () {
+        restartChamber();
+      },
     );
   }
 
   void _loadChamber(ChamberDefinition def) {
+    world.add(
+      QuantumBackdrop(width: def.width, height: def.height, tier: def.tier),
+    );
     for (final b in def.universalBlocks) {
       world.add(UniversalBlock(position: b.position, size: b.size));
     }
@@ -151,6 +182,27 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
       shardsCollectedMask |= (1 << shardIndex);
       AudioEngine.instance.playShard();
       HapticsService.instance.triggerShard();
+
+      if (shardsCollectedCount == 3) {
+        screenShake.addTrauma(0.45);
+        if (!reduceMotion) {
+          world.add(
+            ParticleFactory.createShockwave(
+              center: shardPosition.clone(),
+              primaryColor: AppColors.chronoShard,
+              accentColor: AppColors.solarAmber,
+            ),
+          );
+          world.addAll(
+            ParticleFactory.createLandingBurst(
+              position: shardPosition.clone(),
+              color: AppColors.chronoShard,
+              count: 16,
+            ),
+          );
+        }
+      }
+
       world.addAll(
         ParticleFactory.createShardSparkles(position: shardPosition),
       );
@@ -197,10 +249,14 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
 
   void restartChamber() {
     elapsedTime = 0.0;
+    isTimerStarted = false;
     shardsCollectedMask = 0;
     isCompleted = false;
     overlays.remove('VictoryScreen');
     resumeGame();
+
+    final p = _player;
+    if (p == null) return;
 
     final def = chamber;
     if (def != null) {
@@ -216,15 +272,15 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
 
     final spawn =
         chamber?.spawnPoint ?? initialPlayerPosition ?? Vector2(100, 200);
-    player.position.setFrom(spawn);
-    player.kinematics.x = spawn.x;
-    player.kinematics.y = spawn.y;
-    player.kinematics.vx = 0.0;
-    player.kinematics.vy = 0.0;
-    player.kinematics.coyoteTimer = 0.0;
-    player.kinematics.jumpBufferTimer = 0.0;
-    player.kinematics.phase = const SolarPhase();
-    player.kinematics.isGrounded = false;
+    p.position.setFrom(spawn);
+    p.kinematics.x = spawn.x;
+    p.kinematics.y = spawn.y;
+    p.kinematics.vx = 0.0;
+    p.kinematics.vy = 0.0;
+    p.kinematics.coyoteTimer = 0.0;
+    p.kinematics.jumpBufferTimer = 0.0;
+    p.kinematics.phase = const SolarPhase();
+    p.kinematics.isGrounded = false;
     AudioEngine.instance.crossfadeToPhase(const SolarPhase());
   }
 
@@ -232,7 +288,9 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
   void update(double dt) {
     if (isPaused || isCompleted) return;
     super.update(dt);
-    elapsedTime += dt;
+    if (isTimerStarted) {
+      elapsedTime += dt;
+    }
 
     // Apply Screen Shake to viewfinder
     final (shakeOffset, shakeAngle) = screenShake.update(dt);
@@ -241,7 +299,9 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     }
     camera.viewfinder.angle = shakeAngle;
 
-    final playerRect = player.toRect();
+    final p = _player;
+    if (p == null) return;
+    final playerRect = p.toRect();
 
     // 1. Collect Chrono-Shards
     for (final shard in world.children.query<ChronoShard>()) {

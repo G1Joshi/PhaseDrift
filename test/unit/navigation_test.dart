@@ -25,8 +25,21 @@ void main() {
       await tester.tap(find.text('CHAMBER MATRIX'));
       await tester.pumpAndSettle();
 
-      expect(find.text('CHAMBER MATRIX'), findsWidgets);
+      expect(find.textContaining('SECTOR DIRECTORY'), findsWidgets);
+      expect(find.text('SECTOR 01'), findsOneWidget);
+
+      // Tap into Sector 1 to open its chambers
+      await tester.tap(find.text('SOLAR DAWN'));
+      await tester.pumpAndSettle();
+
       expect(find.text('CHAMBER 01'), findsOneWidget);
+      expect(find.text('AWAKENING'), findsOneWidget);
+
+      // Tap back to return to Sector Directory
+      await tester.tap(find.byIcon(Icons.arrow_back));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('SECTOR DIRECTORY'), findsWidgets);
     });
 
     testWidgets('navigates from TitleScreen to SettingsScreen and back', (

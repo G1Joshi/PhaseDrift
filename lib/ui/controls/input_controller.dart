@@ -7,6 +7,7 @@ class InputController {
     this.onJumpReleased,
     this.onShiftPressed,
     this.onPausePressed,
+    this.onRestartPressed,
   });
 
   final void Function(double axis)? onMoveChanged;
@@ -14,6 +15,7 @@ class InputController {
   final void Function()? onJumpReleased;
   final void Function()? onShiftPressed;
   final void Function()? onPausePressed;
+  final void Function()? onRestartPressed;
 
   double _moveAxis = 0.0;
   bool _isJumpHeld = false;
@@ -83,6 +85,9 @@ class InputController {
       } else if (event.logicalKey == LogicalKeyboardKey.escape ||
           event.logicalKey == LogicalKeyboardKey.keyP) {
         if (event is KeyDownEvent) triggerPause();
+        return true;
+      } else if (event.logicalKey == LogicalKeyboardKey.keyR) {
+        if (event is KeyDownEvent) onRestartPressed?.call();
         return true;
       } else if (isLeft || isRight) {
         return true;

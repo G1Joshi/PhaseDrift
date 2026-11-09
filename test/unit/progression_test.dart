@@ -8,10 +8,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('ChamberRegistry & Structural Integrity', () {
-    test('registry contains all 8 valid campaign chambers', () {
-      expect(ChamberRegistry.totalChambers, equals(8));
+    test('registry contains all 50 valid campaign chambers across 5 difficulty sectors (10 per sector)', () {
+      expect(ChamberRegistry.totalChambers, equals(50));
       final chambers = ChamberRegistry.allChambers;
-      expect(chambers.length, equals(8));
+      expect(chambers.length, equals(50));
 
       for (var i = 0; i < chambers.length; i++) {
         final chamber = chambers[i];
@@ -19,19 +19,56 @@ void main() {
         expect(
           chamber.isValid,
           isTrue,
-          reason: 'Chamber ${chamber.chamberId} must pass validation',
+          reason:
+              'Chamber ${chamber.chamberId} (${chamber.name}) must pass validation',
         );
         expect(chamber.shards.length, equals(3));
         expect(chamber.parTimeMs, greaterThan(0));
-        expect(chamber.width, greaterThanOrEqualTo(560.0));
-        expect(chamber.height, greaterThanOrEqualTo(320.0));
+        expect(chamber.width, greaterThanOrEqualTo(480.0));
+        expect(chamber.height, greaterThanOrEqualTo(260.0));
       }
+
+      // Check Sector distribution (10 chambers per sector)
+      final veryEasyChambers = chambers
+          .where((c) => c.tier == ChamberTier.veryEasy)
+          .toList();
+      expect(veryEasyChambers.length, equals(10));
+      expect(veryEasyChambers.first.chamberId, equals(1));
+      expect(veryEasyChambers.last.chamberId, equals(10));
+
+      final easyChambers = chambers
+          .where((c) => c.tier == ChamberTier.easy)
+          .toList();
+      expect(easyChambers.length, equals(10));
+      expect(easyChambers.first.chamberId, equals(11));
+      expect(easyChambers.last.chamberId, equals(20));
+
+      final mediumChambers = chambers
+          .where((c) => c.tier == ChamberTier.medium)
+          .toList();
+      expect(mediumChambers.length, equals(10));
+      expect(mediumChambers.first.chamberId, equals(21));
+      expect(mediumChambers.last.chamberId, equals(30));
+
+      final hardChambers = chambers
+          .where((c) => c.tier == ChamberTier.hard)
+          .toList();
+      expect(hardChambers.length, equals(10));
+      expect(hardChambers.first.chamberId, equals(31));
+      expect(hardChambers.last.chamberId, equals(40));
+
+      final veryHardChambers = chambers
+          .where((c) => c.tier == ChamberTier.veryHard)
+          .toList();
+      expect(veryHardChambers.length, equals(10));
+      expect(veryHardChambers.first.chamberId, equals(41));
+      expect(veryHardChambers.last.chamberId, equals(50));
     });
 
-    test('getNextChamber advances sequentially and terminates at apex', () {
+    test('getNextChamber advances sequentially and terminates at apex 50', () {
       expect(ChamberRegistry.getNextChamber(1)?.chamberId, equals(2));
-      expect(ChamberRegistry.getNextChamber(7)?.chamberId, equals(8));
-      expect(ChamberRegistry.getNextChamber(8), isNull);
+      expect(ChamberRegistry.getNextChamber(49)?.chamberId, equals(50));
+      expect(ChamberRegistry.getNextChamber(50), isNull);
     });
   });
 
@@ -89,15 +126,21 @@ void main() {
       SharedPreferences.setMockInitialValues({});
     });
 
-    test(
-      'unlocks Chamber 1 by default and locks Chamber 2 until cleared',
-      () async {
-        final progression = ProgressionService();
+    test('unlocks first chamber of each sector by default and locks internal chambers until cleared', () async {
+      final progression = ProgressionService();
 
-        expect(await progression.isChamberUnlocked(1), isTrue);
-        expect(await progression.isChamberUnlocked(2), isFalse);
-      },
-    );
+      // First chamber of each sector (1, 11, 21, 31, 41) is unlocked by default
+      expect(await progression.isChamberUnlocked(1), isTrue);
+      expect(await progression.isChamberUnlocked(11), isTrue);
+      expect(await progression.isChamberUnlocked(21), isTrue);
+      expect(await progression.isChamberUnlocked(31), isTrue);
+      expect(await progression.isChamberUnlocked(41), isTrue);
+
+      // Internal subsequent chambers are locked until previous is cleared
+      expect(await progression.isChamberUnlocked(2), isFalse);
+      expect(await progression.isChamberUnlocked(12), isFalse);
+      expect(await progression.isChamberUnlocked(22), isFalse);
+    });
 
     test(
       'completing chamber records run and unlocks subsequent sector',

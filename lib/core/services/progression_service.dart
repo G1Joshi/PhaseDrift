@@ -14,8 +14,16 @@ class ProgressionService {
     await _persistence.init();
   }
 
+  static bool isFirstChamberOfSector(int chamberId) {
+    return chamberId == 1 ||
+        chamberId == 11 ||
+        chamberId == 21 ||
+        chamberId == 31 ||
+        chamberId == 41;
+  }
+
   Future<bool> isChamberUnlocked(int chamberId) async {
-    if (chamberId <= 1) return true;
+    if (chamberId <= 1 || isFirstChamberOfSector(chamberId)) return true;
     await _ensureInitialized();
     final currentRecord = _persistence.getChamberRecord(chamberId);
     if (currentRecord.isUnlocked) return true;
