@@ -91,13 +91,16 @@ class _MilestonesDialogState extends State<MilestonesDialog> {
         ? _milestones
         : _milestones.where((m) => m.tier == _filterTier).toList();
 
+    final size = MediaQuery.sizeOf(context);
+    final isCompact = size.height <= 480.0 && size.width > size.height;
+
     return BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
       child: Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(
-          horizontal: 24.0,
-          vertical: 32.0,
+        insetPadding: EdgeInsets.symmetric(
+          horizontal: isCompact ? 16.0 : 24.0,
+          vertical: isCompact ? 10.0 : 32.0,
         ),
         child: Container(
           constraints: const BoxConstraints(maxWidth: 680.0, maxHeight: 600.0),
@@ -119,9 +122,9 @@ class _MilestonesDialogState extends State<MilestonesDialog> {
             children: [
               // Header
               Container(
-                padding: const EdgeInsets.symmetric(
+                padding: EdgeInsets.symmetric(
                   horizontal: 20.0,
-                  vertical: 16.0,
+                  vertical: isCompact ? 10.0 : 16.0,
                 ),
                 decoration: BoxDecoration(
                   border: Border(
@@ -173,9 +176,9 @@ class _MilestonesDialogState extends State<MilestonesDialog> {
 
               // Progress Bar & Filter Chips
               Padding(
-                padding: const EdgeInsets.symmetric(
+                padding: EdgeInsets.symmetric(
                   horizontal: 20.0,
-                  vertical: 12.0,
+                  vertical: isCompact ? 8.0 : 12.0,
                 ),
                 child: Column(
                   children: [
@@ -234,9 +237,10 @@ class _MilestonesDialogState extends State<MilestonesDialog> {
                         ),
                       )
                     : ListView.separated(
-                        padding: const EdgeInsets.symmetric(
+                        physics: const BouncingScrollPhysics(),
+                        padding: EdgeInsets.symmetric(
                           horizontal: 20.0,
-                          vertical: 8.0,
+                          vertical: isCompact ? 4.0 : 8.0,
                         ),
                         itemCount: displayed.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 8.0),

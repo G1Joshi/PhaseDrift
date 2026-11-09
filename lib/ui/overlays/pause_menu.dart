@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/domain/domain.dart';
+import '../../core/services/services.dart';
 import '../../core/theme/theme.dart';
 import '../controls/chamfer_button.dart';
 
@@ -102,6 +103,8 @@ class _PauseMenuState extends State<PauseMenu> {
     required VoidCallback onTap,
     required int index,
     bool isPrimary = false,
+    EdgeInsetsGeometry? padding,
+    double? fontSize,
   }) {
     return ChamferButton(
       label: label,
@@ -112,6 +115,8 @@ class _PauseMenuState extends State<PauseMenu> {
       isFocused: _focusedIndex == index,
       isPrimary: isPrimary,
       accentColor: widget.phase.primaryColor,
+      padding: padding ?? const EdgeInsets.symmetric(vertical: 12.0),
+      fontSize: fontSize ?? 13.0,
     );
   }
 
@@ -120,6 +125,8 @@ class _PauseMenuState extends State<PauseMenu> {
     final chamberCode =
         'CHAMBER ${widget.chamberNumber.toString().padLeft(2, '0')}';
     final phaseColor = widget.phase.primaryColor;
+    final size = MediaQuery.sizeOf(context);
+    final isCompact = size.height <= 480.0 && size.width > size.height;
 
     return KeyboardListener(
       focusNode: _focusNode,
@@ -140,8 +147,14 @@ class _PauseMenuState extends State<PauseMenu> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 340.0),
               child: Container(
-                margin: const EdgeInsets.all(24.0),
-                padding: const EdgeInsets.all(24.0),
+                margin: EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: isCompact ? 10.0 : 24.0,
+                ),
+                padding: EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: isCompact ? 12.0 : 24.0,
+                ),
                 decoration: ShapeDecoration(
                   color: AppColors.canvasDark,
                   shape: AppDecorations.chamferShape(
@@ -168,45 +181,65 @@ class _PauseMenuState extends State<PauseMenu> {
                           color: AppColors.onSurface,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 1.5,
+                          fontSize: isCompact ? 15.0 : 17.0,
                         ),
                       ),
-                      const SizedBox(height: 4.0),
+                      const SizedBox(height: 2.0),
                       Text(
                         '$chamberCode // ${widget.chamberName.toUpperCase()}',
                         style: AppTypography.telemetryLabel.copyWith(
                           color: phaseColor,
                           fontWeight: FontWeight.w600,
+                          fontSize: isCompact ? 9.0 : 10.0,
                         ),
                       ),
-                      const SizedBox(height: 20.0),
+                      SizedBox(height: isCompact ? 10.0 : 20.0),
                       _buildMenuButton(
                         label: 'RESUME',
                         onTap: widget.onResume,
                         index: 0,
                         isPrimary: true,
+                        padding: EdgeInsets.symmetric(
+                          vertical: isCompact ? 8.0 : 12.0,
+                        ),
+                        fontSize: isCompact ? 12.0 : 13.0,
                       ),
                       _buildMenuButton(
                         label: 'RESTART CHAMBER',
                         onTap: widget.onRestart,
                         index: 1,
+                        padding: EdgeInsets.symmetric(
+                          vertical: isCompact ? 8.0 : 12.0,
+                        ),
+                        fontSize: isCompact ? 12.0 : 13.0,
                       ),
                       if (widget.onSettings != null)
                         _buildMenuButton(
                           label: 'SETTINGS',
                           onTap: widget.onSettings!,
                           index: 2,
+                          padding: EdgeInsets.symmetric(
+                            vertical: isCompact ? 8.0 : 12.0,
+                          ),
+                          fontSize: isCompact ? 12.0 : 13.0,
                         ),
                       if (widget.onQuit != null)
                         _buildMenuButton(
                           label: 'MAIN MENU',
                           onTap: widget.onQuit!,
                           index: widget.onSettings != null ? 3 : 2,
+                          padding: EdgeInsets.symmetric(
+                            vertical: isCompact ? 8.0 : 12.0,
+                          ),
+                          fontSize: isCompact ? 12.0 : 13.0,
                         ),
-                      const SizedBox(height: 16.0),
+                      SizedBox(height: isCompact ? 8.0 : 16.0),
                       Text(
-                        '[ESC] RESUME  \u2022  [R] RESTART  \u2022  [ENTER] SELECT',
+                        AppPlatform.isTouchDevice(context)
+                            ? 'TAP TO SELECT  \u2022  SWIPE TO DISMISS'
+                            : '[ESC] RESUME  \u2022  [R] RESTART  \u2022  [ENTER] SELECT',
                         style: AppTypography.telemetryLabel.copyWith(
-                          fontSize: 9.0,
+                          fontSize: 8.5,
                           color: AppColors.onSurfaceVariant.withValues(
                             alpha: 0.7,
                           ),
