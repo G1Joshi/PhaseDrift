@@ -33,16 +33,15 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
   bool isPaused = false;
   bool isCompleted = false;
   bool reduceMotion = false;
+  double ceilingDriftSeconds = 0.0;
+  final ValueNotifier<GamePhase> phaseNotifier = ValueNotifier<GamePhase>(
+    const SolarPhase(),
+  );
 
   int get elapsedMs => (elapsedTime * 1000).toInt();
 
-  int get shardsCollectedCount {
-    var count = 0;
-    if ((shardsCollectedMask & 1) != 0) count++;
-    if ((shardsCollectedMask & 2) != 0) count++;
-    if ((shardsCollectedMask & 4) != 0) count++;
-    return count;
-  }
+  int get shardsCollectedCount =>
+      ChamberRecord.countShards(shardsCollectedMask);
 
   void setReduceMotion(bool value) {
     reduceMotion = value;
@@ -50,7 +49,9 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
   }
 
   @override
-  Color backgroundColor() => AppColors.obsidianVoid;
+  Color backgroundColor() => (_player != null && !player.kinematics.isSolar)
+      ? const Color(0xFF03070C)
+      : const Color(0xFF090704);
 
   @override
   Future<void> onLoad() async {
@@ -88,12 +89,23 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
       },
       onShiftPressed: () {
         isTimerStarted = true;
+        MilestoneService.instance.triggerUnlock('first_shift');
         final highSpeed = player.kinematics.vy.abs() > 180.0;
         player.kinematics.triggerShift();
+        phaseNotifier.value = player.kinematics.phase;
         AudioEngine.instance.playShift();
         AudioEngine.instance.crossfadeToPhase(player.kinematics.phase);
         screenShake.addTrauma(highSpeed ? 0.45 : 0.25);
         HapticsService.instance.triggerShift();
+        if (highSpeed) {
+          world.add(
+            FloatingCallout(
+              position: Vector2(player.position.x, player.position.y - 20.0),
+              text: 'SLINGSHOT!',
+              color: player.kinematics.phase.primaryColor,
+            ),
+          );
+        }
         if (!reduceMotion) {
           world.add(
             ParticleFactory.createShockwave(
@@ -153,6 +165,44 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     for (final sh in def.shards) {
       world.add(ChronoShard(position: sh.position, shardIndex: sh.shardIndex));
     }
+    for (final g in def.phaseGates) {
+      world.add(PhaseGate(position: g.position, size: g.size, phase: g.phase));
+    }
+    for (final pad in def.tachyonPads) {
+      world.add(
+        TachyonPad(
+          position: pad.position,
+          size: pad.size,
+          boostVelocity: pad.boostVelocity,
+        ),
+      );
+    }
+    for (final dir in def.directives) {
+      world.add(
+        ChamberDirective(
+          position: dir.position,
+          title: dir.title,
+          subtitle: dir.subtitle,
+          accentColor: def.tier.color,
+        ),
+      );
+    }
+    for (final m in def.movingPlatforms) {
+      world.add(
+        MovingPlatform(
+          startPosition: m.startPosition,
+          endPosition: m.endPosition,
+          size: m.size,
+          speed: m.speed,
+          phaseType: m.phaseType,
+        ),
+      );
+    }
+    for (final l in def.ladders) {
+      world.add(
+        PhaseLadder(position: l.position, size: l.size, phaseType: l.phaseType),
+      );
+    }
     world.add(ExitPortal(position: def.portalPosition));
   }
 
@@ -183,7 +233,18 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
       AudioEngine.instance.playShard();
       HapticsService.instance.triggerShard();
 
-      if (shardsCollectedCount == 3) {
+      final currentCount = shardsCollectedCount;
+      final String calloutText;
+      final Color calloutColor;
+      if (currentCount == 1) {
+        calloutText = 'SHARD 1/3';
+        calloutColor = AppColors.solarAmber;
+      } else if (currentCount == 2) {
+        calloutText = 'SHARD 2/3';
+        calloutColor = AppColors.solarAmber;
+      } else {
+        calloutText = 'CHRONO OVERDRIVE (3/3)';
+        calloutColor = AppColors.chronoShard;
         screenShake.addTrauma(0.45);
         if (!reduceMotion) {
           world.add(
@@ -202,6 +263,14 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
           );
         }
       }
+
+      world.add(
+        FloatingCallout(
+          position: shardPosition.clone(),
+          text: calloutText,
+          color: calloutColor,
+        ),
+      );
 
       world.addAll(
         ParticleFactory.createShardSparkles(position: shardPosition),
@@ -226,6 +295,7 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     player.kinematics.coyoteTimer = 0.0;
     player.kinematics.jumpBufferTimer = 0.0;
     player.kinematics.phase = const SolarPhase();
+    phaseNotifier.value = const SolarPhase();
     player.kinematics.isGrounded = false;
     AudioEngine.instance.crossfadeToPhase(const SolarPhase());
   }
@@ -280,6 +350,7 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     p.kinematics.coyoteTimer = 0.0;
     p.kinematics.jumpBufferTimer = 0.0;
     p.kinematics.phase = const SolarPhase();
+    phaseNotifier.value = const SolarPhase();
     p.kinematics.isGrounded = false;
     AudioEngine.instance.crossfadeToPhase(const SolarPhase());
   }
@@ -302,6 +373,17 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     final p = _player;
     if (p == null) return;
     final playerRect = p.toRect();
+
+    // Check kinetic milestones
+    if (p.kinematics.vx.abs() >= 220.0) {
+      MilestoneService.instance.triggerUnlock('slingshot_master');
+    }
+    if (p.kinematics.isGrounded && p.kinematics.phase is VoidPhase) {
+      ceilingDriftSeconds += dt;
+      if (ceilingDriftSeconds >= 5.0) {
+        MilestoneService.instance.triggerUnlock('ceiling_drifter');
+      }
+    }
 
     // 1. Collect Chrono-Shards
     for (final shard in world.children.query<ChronoShard>()) {
@@ -332,14 +414,48 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
       }
     }
 
-    // 4. Out of bounds check
+    // 4. Phase Laser Gates (permeable if phase matches, lethal if mismatch)
+    for (final gate in world.children.query<PhaseGate>()) {
+      if (playerRect.overlaps(gate.toRect().deflate(2.0))) {
+        if (player.kinematics.phase.runtimeType != gate.phase.runtimeType) {
+          killPlayer();
+          return;
+        }
+      }
+    }
+
+    // 5. Tachyon Acceleration Pads
+    for (final pad in world.children.query<TachyonPad>()) {
+      if (playerRect.overlaps(pad.toRect())) {
+        if (pad.trigger()) {
+          player.kinematics.vx = pad.boostVelocity.x;
+          if (pad.boostVelocity.y != 0.0) {
+            player.kinematics.vy = pad.boostVelocity.y;
+          }
+          AudioEngine.instance.playShift();
+          HapticsService.instance.triggerShift();
+          screenShake.addTrauma(0.35);
+          if (!reduceMotion) {
+            world.add(
+              ParticleFactory.createShockwave(
+                center: pad.position.clone() + (pad.size / 2),
+                primaryColor: AppColors.solarGold,
+                accentColor: AppColors.voidCyan,
+              ),
+            );
+          }
+        }
+      }
+    }
+
+    // 6. Out of bounds check
     final chamberH = chamber?.height ?? 320.0;
     if (player.position.y > chamberH + 60.0 || player.position.y < -60.0) {
       killPlayer();
       return;
     }
 
-    // 5. Exit Portal Victory
+    // 7. Exit Portal Victory
     final portal = world.children.query<ExitPortal>().firstOrNull;
     if (portal != null && playerRect.overlaps(portal.toRect())) {
       completeChamber();
