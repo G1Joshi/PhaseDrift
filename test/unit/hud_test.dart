@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phasedrift/core/domain/domain.dart';
@@ -85,20 +86,34 @@ void main() {
       expect(lastMove, equals(0.0));
     });
 
-    test('dispatches shift and pause callbacks', () {
+    test('dispatches shift, pause, and restart callbacks', () {
       var shifted = false;
       var paused = false;
+      var restarted = false;
 
       final controller = InputController(
         onShiftPressed: () => shifted = true,
         onPausePressed: () => paused = true,
+        onRestartPressed: () => restarted = true,
       );
 
       controller.triggerShift();
       controller.triggerPause();
 
+      // Test R key down event triggers restart callback
+      final keyEvent = KeyDownEvent(
+        physicalKey: PhysicalKeyboardKey.keyR,
+        logicalKey: LogicalKeyboardKey.keyR,
+        timeStamp: Duration.zero,
+      );
+      final handled = controller.handleKeyEvent(keyEvent, {
+        LogicalKeyboardKey.keyR,
+      });
+
       expect(shifted, isTrue);
       expect(paused, isTrue);
+      expect(restarted, isTrue);
+      expect(handled, isTrue);
     });
   });
 
