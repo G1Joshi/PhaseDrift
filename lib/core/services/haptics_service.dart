@@ -42,4 +42,25 @@ class HapticsService {
       await HapticFeedback.heavyImpact();
     } catch (_) {}
   }
+
+  Future<void> triggerTouchDown() async {
+    if (!isEnabled) return;
+    try {
+      await HapticFeedback.selectionClick();
+    } catch (_) {}
+  }
+
+  Future<void> triggerSlingshot() async {
+    if (!isEnabled) return;
+    try {
+      await HapticFeedback.heavyImpact();
+    } catch (_) {}
+  }
+
+  Future<void> triggerWallSlide() async {
+    if (!isEnabled) return;
+    try {
+      await HapticFeedback.selectionClick();
+    } catch (_) {}
+  }
 }

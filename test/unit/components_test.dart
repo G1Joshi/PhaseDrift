@@ -180,8 +180,8 @@ void main() {
 
       expect(directive.title, equals('[SHIFT] DRIFT'));
       expect(directive.subtitle, equals('INVERT REALITY'));
-      expect(directive.size.x, equals(120.0));
-      expect(directive.size.y, equals(40.0));
+      expect(directive.size.x, equals(76.0));
+      expect(directive.size.y, equals(22.0));
 
       directive.update(0.1);
       expect(directive.position.x, equals(100.0));

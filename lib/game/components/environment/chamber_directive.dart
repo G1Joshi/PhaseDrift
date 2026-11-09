@@ -13,7 +13,7 @@ class ChamberDirective extends PositionComponent {
     this.accentColor = AppColors.solarAmber,
   }) : super(
          position: position,
-         size: Vector2(120.0, 40.0),
+         size: Vector2(76.0, 22.0),
          anchor: Anchor.center,
          priority: -1,
        );
@@ -33,18 +33,18 @@ class ChamberDirective extends PositionComponent {
     _titlePaint = TextPaint(
       style: const TextStyle(
         fontFamily: 'monospace',
-        fontSize: 10.0,
+        fontSize: 6.5,
         fontWeight: FontWeight.w800,
-        letterSpacing: 1.2,
+        letterSpacing: 0.8,
         color: AppColors.onSurface,
       ),
     );
     _subtitlePaint = TextPaint(
       style: TextStyle(
         fontFamily: 'monospace',
-        fontSize: 7.5,
+        fontSize: 4.8,
         fontWeight: FontWeight.w600,
-        letterSpacing: 0.8,
+        letterSpacing: 0.5,
         color: accentColor.withValues(alpha: 0.85),
       ),
     );
@@ -66,7 +66,7 @@ class ChamberDirective extends PositionComponent {
 
     final rrect = RRect.fromRectAndRadius(
       Rect.fromLTWH(0, 0, size.x, size.y),
-      const Radius.circular(4.0),
+      const Radius.circular(2.5),
     );
 
     // Subtle dark translucent background
@@ -83,10 +83,10 @@ class ChamberDirective extends PositionComponent {
     // Tactical corner bracket accents
     final borderPaint = Paint()
       ..color = accentColor.withValues(alpha: borderAlpha)
-      ..strokeWidth = 1.0
+      ..strokeWidth = 0.75
       ..style = PaintingStyle.stroke;
 
-    const bLen = 8.0;
+    const bLen = 5.0;
     // Top-left
     canvas.drawLine(Offset.zero, const Offset(bLen, 0), borderPaint);
     canvas.drawLine(Offset.zero, const Offset(0, bLen), borderPaint);
@@ -115,7 +115,7 @@ class ChamberDirective extends PositionComponent {
     _titlePaint.render(
       canvas,
       title,
-      Vector2(size.x / 2, subtitle.isNotEmpty ? 12.0 : 20.0),
+      Vector2(size.x / 2, subtitle.isNotEmpty ? 7.5 : 11.0),
       anchor: Anchor.center,
     );
 
@@ -124,7 +124,7 @@ class ChamberDirective extends PositionComponent {
       _subtitlePaint.render(
         canvas,
         subtitle,
-        Vector2(size.x / 2, 26.0),
+        Vector2(size.x / 2, 15.5),
         anchor: Anchor.center,
       );
     }

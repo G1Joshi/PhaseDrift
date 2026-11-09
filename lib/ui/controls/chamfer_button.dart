@@ -12,6 +12,7 @@ class ChamferButton extends StatelessWidget {
     this.accentColor,
     this.focusColor = AppColors.voidCyan,
     this.padding = const EdgeInsets.symmetric(vertical: 12.0),
+    this.margin = const EdgeInsets.symmetric(vertical: 4.0),
     this.fontSize = 13.0,
     this.icon,
   });
@@ -23,6 +24,7 @@ class ChamferButton extends StatelessWidget {
   final Color? accentColor;
   final Color focusColor;
   final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry margin;
   final double fontSize;
   final IconData? icon;
 
@@ -34,7 +36,7 @@ class ChamferButton extends StatelessWidget {
         : (isPrimary ? primaryBg : AppColors.structuralSeam);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      padding: margin,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -84,15 +86,20 @@ class ChamferButton extends StatelessWidget {
                   Icon(icon, color: AppColors.obsidianVoid, size: 16.0),
                   const SizedBox(width: 6.0),
                 ],
-                Text(
-                  label,
-                  style: AppTypography.button.copyWith(
-                    color: isPrimary
-                        ? AppColors.obsidianVoid
-                        : (isFocused ? focusColor : AppColors.onSurface),
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.2,
-                    fontSize: fontSize,
+                Flexible(
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.button.copyWith(
+                      color: isPrimary
+                          ? AppColors.obsidianVoid
+                          : (isFocused ? focusColor : AppColors.onSurface),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                      fontSize: fontSize,
+                    ),
                   ),
                 ),
                 if (isFocused && !isPrimary) ...[

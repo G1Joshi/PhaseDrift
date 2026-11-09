@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/domain/domain.dart';
+import '../../core/services/services.dart';
 import '../../core/theme/theme.dart';
 import 'amber_cyan_progress_bar.dart';
 import 'phase_indicator.dart';
@@ -124,7 +125,11 @@ class TelemetryHud extends StatelessWidget {
                   if (onPause != null) ...[
                     const SizedBox(width: 8.0),
                     GestureDetector(
-                      onTap: onPause,
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        HapticsService.instance.triggerTouchDown();
+                        onPause!();
+                      },
                       child: Container(
                         width: 42.0,
                         height: 42.0,

@@ -205,7 +205,9 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
           chamfer: AppDecorations.chamferMd,
         ),
         child: Container(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(
+            MediaQuery.sizeOf(context).height <= 480 ? 11.0 : 16.0,
+          ),
           decoration: ShapeDecoration(
             color: AppColors.cardSurface,
             shape: AppDecorations.chamferShape(
@@ -430,7 +432,9 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
           chamfer: AppDecorations.chamferMd,
         ),
         child: Container(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(
+            MediaQuery.sizeOf(context).height <= 480 ? 11.0 : 16.0,
+          ),
           decoration: ShapeDecoration(
             color: isUnlocked
                 ? AppColors.cardSurface
@@ -622,7 +626,9 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
           chamfer: AppDecorations.chamferMd,
         ),
         child: Container(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(
+            MediaQuery.sizeOf(context).height <= 480 ? 11.0 : 16.0,
+          ),
           decoration: ShapeDecoration(
             color: AppColors.cardSurface,
             shape: AppDecorations.chamferShape(
@@ -889,6 +895,9 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
                 // Sector Quick-Switcher Tabs
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
                   child: Row(
                     children: [
                       _buildSectorSwitchChip(
@@ -941,12 +950,18 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
                                 ? 4
                                 : (constraints.maxWidth > 600 ? 3 : 2);
                             return GridView.builder(
+                              physics: const BouncingScrollPhysics(
+                                parent: AlwaysScrollableScrollPhysics(),
+                              ),
                               gridDelegate:
                                   SliverGridDelegateWithFixedCrossAxisCount(
                                     crossAxisCount: crossAxisCount,
                                     crossAxisSpacing: 16.0,
                                     mainAxisSpacing: 16.0,
-                                    childAspectRatio: 1.25,
+                                    childAspectRatio:
+                                        constraints.maxHeight < 400
+                                        ? 1.55
+                                        : 1.25,
                                   ),
                               itemCount: chamberGridCount,
                               itemBuilder: (context, index) {
@@ -972,12 +987,18 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
                                 ? 4
                                 : (constraints.maxWidth > 600 ? 3 : 2);
                             return GridView.builder(
+                              physics: const BouncingScrollPhysics(
+                                parent: AlwaysScrollableScrollPhysics(),
+                              ),
                               gridDelegate:
                                   SliverGridDelegateWithFixedCrossAxisCount(
                                     crossAxisCount: crossAxisCount,
                                     crossAxisSpacing: 16.0,
                                     mainAxisSpacing: 16.0,
-                                    childAspectRatio: 1.25,
+                                    childAspectRatio:
+                                        constraints.maxHeight < 400
+                                        ? 1.55
+                                        : 1.25,
                                   ),
                               itemCount: 6,
                               itemBuilder: (context, index) {
@@ -999,7 +1020,9 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
                 const SizedBox(height: 10.0),
                 Center(
                   child: Text(
-                    '[WASD / ARROWS] NAVIGATE  \u2022  [SPACE/ENTER] SELECT  \u2022  [ESC] RETURN  \u2022  [M] BADGES',
+                    AppPlatform.isTouchDevice(context)
+                        ? 'TAP TO SELECT  \u2022  SWIPE SECTORS'
+                        : '[WASD / ARROWS] NAVIGATE  \u2022  [SPACE/ENTER] SELECT  \u2022  [ESC] RETURN  \u2022  [M] BADGES',
                     style: AppTypography.telemetryLabel.copyWith(
                       fontSize: 8.5,
                       color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
