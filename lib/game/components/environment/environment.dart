@@ -1,6 +1,11 @@
+export 'chamber_directive.dart';
 export 'chrono_shard.dart';
 export 'exit_portal.dart';
 export 'hazard_spike.dart';
+export 'moving_platform.dart';
 export 'phase_block.dart';
+export 'phase_gate.dart';
+export 'phase_ladder.dart';
 export 'shift_beacon.dart';
+export 'tachyon_pad.dart';
 export 'universal_block.dart';

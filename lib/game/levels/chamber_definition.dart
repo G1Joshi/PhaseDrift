@@ -21,6 +21,18 @@ enum ChamberTier {
   final String sectorName;
 }
 
+class ChamberDirectiveData {
+  const ChamberDirectiveData({
+    required this.position,
+    required this.title,
+    this.subtitle = '',
+  });
+
+  final Vector2 position;
+  final String title;
+  final String subtitle;
+}
+
 class PhaseBlockData {
   const PhaseBlockData({
     required this.position,
@@ -66,6 +78,58 @@ class ShiftBeaconData {
   final Vector2? size;
 }
 
+class PhaseGateData {
+  const PhaseGateData({
+    required this.position,
+    required this.size,
+    required this.phase,
+  });
+
+  final Vector2 position;
+  final Vector2 size;
+  final GamePhase phase;
+}
+
+class TachyonPadData {
+  const TachyonPadData({
+    required this.position,
+    required this.size,
+    this.boostVelocity,
+  });
+
+  final Vector2 position;
+  final Vector2 size;
+  final Vector2? boostVelocity;
+}
+
+class MovingPlatformData {
+  const MovingPlatformData({
+    required this.startPosition,
+    required this.endPosition,
+    required this.size,
+    this.speed = 60.0,
+    this.phaseType,
+  });
+
+  final Vector2 startPosition;
+  final Vector2 endPosition;
+  final Vector2 size;
+  final double speed;
+  final PhaseType? phaseType;
+}
+
+class PhaseLadderData {
+  const PhaseLadderData({
+    required this.position,
+    required this.size,
+    this.phaseType,
+  });
+
+  final Vector2 position;
+  final Vector2 size;
+  final PhaseType? phaseType;
+}
+
 class ChamberDefinition {
   const ChamberDefinition({
     required this.chamberId,
@@ -83,6 +147,11 @@ class ChamberDefinition {
     this.spikes = const [],
     this.shards = const [],
     this.beacons = const [],
+    this.phaseGates = const [],
+    this.tachyonPads = const [],
+    this.directives = const [],
+    this.movingPlatforms = const [],
+    this.ladders = const [],
   });
 
   final int chamberId;
@@ -100,6 +169,11 @@ class ChamberDefinition {
   final List<HazardSpikeData> spikes;
   final List<ChronoShardData> shards;
   final List<ShiftBeaconData> beacons;
+  final List<PhaseGateData> phaseGates;
+  final List<TachyonPadData> tachyonPads;
+  final List<ChamberDirectiveData> directives;
+  final List<MovingPlatformData> movingPlatforms;
+  final List<PhaseLadderData> ladders;
 
   bool get isValid {
     if (name.isEmpty) return false;
