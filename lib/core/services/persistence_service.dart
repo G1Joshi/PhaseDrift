@@ -51,7 +51,7 @@ class PersistenceService {
     }
   }
 
-  List<ChamberRecord> getAllChamberRecords({int totalChambers = 8}) {
+  List<ChamberRecord> getAllChamberRecords({int totalChambers = 100}) {
     return List.generate(totalChambers, (index) => getChamberRecord(index + 1));
   }
 
