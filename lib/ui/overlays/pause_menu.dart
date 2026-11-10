@@ -67,12 +67,16 @@ class _PauseMenuState extends State<PauseMenu> {
         () => _focusedIndex = (_focusedIndex - 1 + totalOptions) % totalOptions,
       );
     } else if (event.logicalKey == LogicalKeyboardKey.enter ||
-        event.logicalKey == LogicalKeyboardKey.space) {
+        event.logicalKey == LogicalKeyboardKey.space ||
+        event.logicalKey == LogicalKeyboardKey.gameButtonA) {
       _activateFocused();
     } else if (event.logicalKey == LogicalKeyboardKey.escape ||
-        event.logicalKey == LogicalKeyboardKey.keyP) {
+        event.logicalKey == LogicalKeyboardKey.keyP ||
+        event.logicalKey == LogicalKeyboardKey.gameButtonStart ||
+        event.logicalKey == LogicalKeyboardKey.gameButtonB) {
       widget.onResume();
-    } else if (event.logicalKey == LogicalKeyboardKey.keyR) {
+    } else if (event.logicalKey == LogicalKeyboardKey.keyR ||
+        event.logicalKey == LogicalKeyboardKey.gameButtonSelect) {
       widget.onRestart();
     }
   }
@@ -200,39 +204,67 @@ class _PauseMenuState extends State<PauseMenu> {
                         index: 0,
                         isPrimary: true,
                         padding: EdgeInsets.symmetric(
-                          vertical: isCompact ? 8.0 : 12.0,
+                          vertical: isCompact ? 9.0 : 12.0,
                         ),
-                        fontSize: isCompact ? 12.0 : 13.0,
+                        fontSize: isCompact ? 12.5 : 13.0,
                       ),
-                      _buildMenuButton(
-                        label: 'RESTART CHAMBER',
-                        onTap: widget.onRestart,
-                        index: 1,
-                        padding: EdgeInsets.symmetric(
-                          vertical: isCompact ? 8.0 : 12.0,
+                      if (isCompact) ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildMenuButton(
+                                label: 'RESTART',
+                                onTap: widget.onRestart,
+                                index: 1,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8.0,
+                                ),
+                                fontSize: 11.5,
+                              ),
+                            ),
+                            if (widget.onSettings != null) ...[
+                              const SizedBox(width: 8.0),
+                              Expanded(
+                                child: _buildMenuButton(
+                                  label: 'SETTINGS',
+                                  onTap: widget.onSettings!,
+                                  index: 2,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8.0,
+                                  ),
+                                  fontSize: 11.5,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
-                        fontSize: isCompact ? 12.0 : 13.0,
-                      ),
-                      if (widget.onSettings != null)
-                        _buildMenuButton(
-                          label: 'SETTINGS',
-                          onTap: widget.onSettings!,
-                          index: 2,
-                          padding: EdgeInsets.symmetric(
-                            vertical: isCompact ? 8.0 : 12.0,
+                        if (widget.onQuit != null)
+                          _buildMenuButton(
+                            label: 'CHAMBER MATRIX',
+                            onTap: widget.onQuit!,
+                            index: widget.onSettings != null ? 3 : 2,
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            fontSize: 11.5,
                           ),
-                          fontSize: isCompact ? 12.0 : 13.0,
-                        ),
-                      if (widget.onQuit != null)
+                      ] else ...[
                         _buildMenuButton(
-                          label: 'MAIN MENU',
-                          onTap: widget.onQuit!,
-                          index: widget.onSettings != null ? 3 : 2,
-                          padding: EdgeInsets.symmetric(
-                            vertical: isCompact ? 8.0 : 12.0,
-                          ),
-                          fontSize: isCompact ? 12.0 : 13.0,
+                          label: 'RESTART CHAMBER',
+                          onTap: widget.onRestart,
+                          index: 1,
                         ),
+                        if (widget.onSettings != null)
+                          _buildMenuButton(
+                            label: 'SETTINGS',
+                            onTap: widget.onSettings!,
+                            index: 2,
+                          ),
+                        if (widget.onQuit != null)
+                          _buildMenuButton(
+                            label: 'CHAMBER MATRIX',
+                            onTap: widget.onQuit!,
+                            index: widget.onSettings != null ? 3 : 2,
+                          ),
+                      ],
                       SizedBox(height: isCompact ? 8.0 : 16.0),
                       Text(
                         AppPlatform.isTouchDevice(context)

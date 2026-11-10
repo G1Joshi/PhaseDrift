@@ -113,38 +113,46 @@ class _MainNavigationHarnessState extends State<MainNavigationHarness>
 
   @override
   Widget build(BuildContext context) {
-    return switch (_currentRoute) {
-      AppRoute.title => TitleScreen(
-        onStartGame: () => _startChamber(ChamberRegistry.getChamber(1)),
-        onOpenChamberSelect: () => _navigateTo(AppRoute.chamberSelect),
-        onOpenSettings: () => _navigateTo(AppRoute.settings),
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 200),
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      child: KeyedSubtree(
+        key: ValueKey(_currentRoute),
+        child: switch (_currentRoute) {
+          AppRoute.title => TitleScreen(
+            onStartGame: () => _startChamber(ChamberRegistry.getChamber(1)),
+            onOpenChamberSelect: () => _navigateTo(AppRoute.chamberSelect),
+            onOpenSettings: () => _navigateTo(AppRoute.settings),
+          ),
+          AppRoute.chamberSelect => ChamberSelectScreen(
+            onSelectChamber: _startChamber,
+            onBack: () => _navigateTo(AppRoute.title),
+          ),
+          AppRoute.settings => SettingsScreen(
+            reduceMotion: _reduceMotion,
+            onReduceMotionChanged: (val) => setState(() => _reduceMotion = val),
+            touchOpacity: _touchOpacity,
+            onTouchOpacityChanged: (val) => setState(() => _touchOpacity = val),
+            touchScale: _touchScale,
+            onTouchScaleChanged: (val) => setState(() => _touchScale = val),
+            southpaw: _southpaw,
+            onSouthpawChanged: (val) => setState(() => _southpaw = val),
+            onBack: () => _navigateTo(AppRoute.title),
+          ),
+          AppRoute.gameplay => GameSessionView(
+            chamber: _activeChamber,
+            reduceMotion: _reduceMotion,
+            touchOpacity: _touchOpacity,
+            touchScale: _touchScale,
+            southpaw: _southpaw,
+            onOpenSettings: () => _navigateTo(AppRoute.settings),
+            onExitToMenu: () => _navigateTo(AppRoute.chamberSelect),
+            onLoadChamber: _startChamber,
+          ),
+        },
       ),
-      AppRoute.chamberSelect => ChamberSelectScreen(
-        onSelectChamber: _startChamber,
-        onBack: () => _navigateTo(AppRoute.title),
-      ),
-      AppRoute.settings => SettingsScreen(
-        reduceMotion: _reduceMotion,
-        onReduceMotionChanged: (val) => setState(() => _reduceMotion = val),
-        touchOpacity: _touchOpacity,
-        onTouchOpacityChanged: (val) => setState(() => _touchOpacity = val),
-        touchScale: _touchScale,
-        onTouchScaleChanged: (val) => setState(() => _touchScale = val),
-        southpaw: _southpaw,
-        onSouthpawChanged: (val) => setState(() => _southpaw = val),
-        onBack: () => _navigateTo(AppRoute.title),
-      ),
-      AppRoute.gameplay => GameSessionView(
-        chamber: _activeChamber,
-        reduceMotion: _reduceMotion,
-        touchOpacity: _touchOpacity,
-        touchScale: _touchScale,
-        southpaw: _southpaw,
-        onOpenSettings: () => _navigateTo(AppRoute.settings),
-        onExitToMenu: () => _navigateTo(AppRoute.chamberSelect),
-        onLoadChamber: _startChamber,
-      ),
-    };
+    );
   }
 }
 
@@ -180,17 +188,30 @@ class _GameSessionViewState extends State<GameSessionView>
   late final Ticker _ticker;
   final ValueNotifier<int> _hudTicker = ValueNotifier<int>(0);
   final FocusNode _gameFocusNode = FocusNode();
+  int? _personalBestMs;
 
   @override
   void initState() {
     super.initState();
     _initGame();
+    _loadPersonalBest();
     _ticker = createTicker((_) {
       _hudTicker.value++;
     })..start();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _gameFocusNode.requestFocus();
     });
+  }
+
+  void _loadPersonalBest() async {
+    final record = await ProgressionService.instance.loadRecord(
+      widget.chamber.chamberId,
+    );
+    if (mounted) {
+      setState(() {
+        _personalBestMs = record.bestTimeMs ?? widget.chamber.parTimeMs;
+      });
+    }
   }
 
   void _initGame() {
@@ -204,6 +225,7 @@ class _GameSessionViewState extends State<GameSessionView>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.chamber.chamberId != widget.chamber.chamberId) {
       _initGame();
+      _loadPersonalBest();
     }
     _game.setReduceMotion(widget.reduceMotion);
   }
@@ -312,7 +334,8 @@ class _GameSessionViewState extends State<GameSessionView>
                             chamberNumber: widget.chamber.chamberId,
                             phase: activePhase,
                             elapsedMs: _game.elapsedMs,
-                            bestTimeMs: widget.chamber.parTimeMs,
+                            bestTimeMs:
+                                _personalBestMs ?? widget.chamber.parTimeMs,
                             shardsMask: _game.shardsCollectedMask,
                             velocity: currentVx,
                             maxVelocity: KinematicConstants.runSpeed,
