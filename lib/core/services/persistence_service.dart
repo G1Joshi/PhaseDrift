@@ -12,6 +12,7 @@ class PersistenceService {
   static PersistenceService get instance => _instance ??= PersistenceService();
 
   static const String _chamberPrefix = 'phasedrift_chamber_';
+  static const String _ghostPrefix = 'phasedrift_ghost_';
   static const String _statsKey = 'phasedrift_player_stats';
 
   SharedPreferences? _preferences;
@@ -84,6 +85,7 @@ class PersistenceService {
   static const String _touchOpacityKey = 'phasedrift_touch_opacity';
   static const String _touchScaleKey = 'phasedrift_touch_scale';
   static const String _southpawKey = 'phasedrift_southpaw_mode';
+  static const String _ghostEnabledKey = 'phasedrift_ghost_enabled';
 
   Future<bool> saveAudioSettings({
     required double master,
@@ -159,6 +161,28 @@ class PersistenceService {
     }
   }
 
+  Future<bool> saveGhostRun(GhostRun ghost) async {
+    final key = '$_ghostPrefix${ghost.chamberId}';
+    return _prefs.setString(key, ghost.encode());
+  }
+
+  GhostRun? getGhostRun(int chamberId) {
+    if (_preferences == null) return null;
+    final key = '$_ghostPrefix$chamberId';
+    final raw = _prefs.getString(key);
+    if (raw == null) return null;
+    return GhostRun.decode(raw);
+  }
+
+  Future<bool> saveGhostEnabled(bool enabled) async {
+    return _prefs.setBool(_ghostEnabledKey, enabled);
+  }
+
+  bool getGhostEnabled() {
+    if (_preferences == null) return true;
+    return _prefs.getBool(_ghostEnabledKey) ?? true;
+  }
+
   Future<bool> resetProgressionTelemetry() async {
     if (_preferences == null) return true;
     final keys = _prefs
@@ -166,23 +190,10 @@ class PersistenceService {
         .where(
           (k) =>
               k.startsWith(_chamberPrefix) ||
+              k.startsWith(_ghostPrefix) ||
               k == _statsKey ||
               k == _milestonesKey,
         )
-        .toList();
-
-    var allSuccess = true;
-    for (final key in keys) {
-      final success = await _prefs.remove(key);
-      if (!success) allSuccess = false;
-    }
-    return allSuccess;
-  }
-
-  Future<bool> resetAllProgress() async {
-    final keys = _prefs
-        .getKeys()
-        .where((k) => k.startsWith('phasedrift_'))
         .toList();
 
     var allSuccess = true;
