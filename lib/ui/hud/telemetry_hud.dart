@@ -47,13 +47,19 @@ class TelemetryHud extends StatelessWidget {
   Widget build(BuildContext context) {
     final speedRatio = maxVelocity > 0 ? (velocity.abs() / maxVelocity) : 0.0;
     final chamberCode = 'CHAMBER ${chamberNumber.toString().padLeft(2, '0')}';
+    final size = MediaQuery.sizeOf(context);
+    final isCompact = size.height <= 480.0 || size.width < 720.0;
+    final showCenterGauge = size.width >= 640.0;
 
     return Align(
       alignment: Alignment.topCenter,
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          padding: EdgeInsets.symmetric(
+            horizontal: isCompact ? 12.0 : 16.0,
+            vertical: isCompact ? 8.0 : 12.0,
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -63,17 +69,24 @@ class TelemetryHud extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8.0,
-                      vertical: 4.0,
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: isCompact ? 180.0 : 260.0,
                     ),
-                    decoration: AppDecorations.hudModule(),
-                    child: Text(
-                      '$chamberCode // ${chamberName.toUpperCase()}',
-                      style: AppTypography.telemetryLabel.copyWith(
-                        color: AppColors.onSurface,
-                        fontWeight: FontWeight.w700,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8.0,
+                        vertical: 4.0,
+                      ),
+                      decoration: AppDecorations.hudModule(),
+                      child: Text(
+                        '$chamberCode // ${chamberName.toUpperCase()}',
+                        style: AppTypography.telemetryLabel.copyWith(
+                          color: AppColors.onSurface,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
@@ -82,22 +95,23 @@ class TelemetryHud extends StatelessWidget {
                 ],
               ),
 
-              // Top-Center: Velocity Gauge
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'VELOCITY // ${velocity.abs().toStringAsFixed(0)} PX/S',
-                    style: AppTypography.telemetryLabel,
-                  ),
-                  const SizedBox(height: 4.0),
-                  AmberCyanProgressBar(
-                    value: speedRatio,
-                    width: 140.0,
-                    height: 6.0,
-                  ),
-                ],
-              ),
+              // Top-Center: Velocity Gauge (hidden on narrow screens to prevent crowding)
+              if (showCenterGauge)
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'VELOCITY // ${velocity.abs().toStringAsFixed(0)} PX/S',
+                      style: AppTypography.telemetryLabel,
+                    ),
+                    const SizedBox(height: 4.0),
+                    AmberCyanProgressBar(
+                      value: speedRatio,
+                      width: isCompact ? 110.0 : 140.0,
+                      height: 6.0,
+                    ),
+                  ],
+                ),
 
               // Top-Right: Shards, Stopwatch, Pause Button
               Row(
@@ -124,25 +138,34 @@ class TelemetryHud extends StatelessWidget {
                   ),
                   if (onPause != null) ...[
                     const SizedBox(width: 8.0),
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        HapticsService.instance.triggerTouchDown();
-                        onPause!();
-                      },
-                      child: Container(
-                        width: 42.0,
-                        height: 42.0,
-                        decoration: ShapeDecoration(
-                          color: AppColors.interactiveModule,
-                          shape: AppDecorations.chamferShape(
+                    Tooltip(
+                      message: 'Pause [Esc]',
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            HapticsService.instance.triggerTouchDown();
+                            onPause!();
+                          },
+                          customBorder: AppDecorations.chamferShape(
                             chamfer: AppDecorations.chamferSm,
                           ),
-                        ),
-                        child: const Icon(
-                          Icons.pause,
-                          color: AppColors.onSurface,
-                          size: 18.0,
+                          child: Container(
+                            width: 42.0,
+                            height: 42.0,
+                            decoration: ShapeDecoration(
+                              color: AppColors.interactiveModule,
+                              shape: AppDecorations.chamferShape(
+                                chamfer: AppDecorations.chamferSm,
+                                borderColor: AppColors.structuralSeam,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.pause,
+                              color: AppColors.onSurface,
+                              size: 18.0,
+                            ),
+                          ),
                         ),
                       ),
                     ),

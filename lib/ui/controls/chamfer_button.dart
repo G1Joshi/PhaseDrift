@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../core/services/services.dart';
 import '../../core/theme/theme.dart';
 
 class ChamferButton extends StatelessWidget {
@@ -40,7 +41,10 @@ class ChamferButton extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
+          onTap: () {
+            HapticsService.instance.triggerClick();
+            onTap();
+          },
           customBorder: AppDecorations.chamferShape(
             chamfer: AppDecorations.chamferSm,
           ),

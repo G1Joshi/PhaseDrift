@@ -251,7 +251,7 @@ void main() {
       await persistence.init();
       final milestoneService = MilestoneService(persistence: persistence);
 
-      final record = ChamberRecord(
+      const record = ChamberRecord(
         chamberId: 1,
         bestTimeMs: 12000,
         collectedShardsMask: 7, // 3 shards
@@ -286,6 +286,48 @@ void main() {
         // Reset
         await progressionService.resetProgression();
         expect(await milestoneService.getUnlockedCount(), equals(0));
+      },
+    );
+  });
+
+  group('Quantum Ghost Run Serialization & Persistence', () {
+    test(
+      'GhostRun serializes and deserializes accurately with frame coordinates',
+      () async {
+        final frames = [
+          const GhostFrame(x: 50.0, y: 100.0, isSolar: true),
+          const GhostFrame(x: 55.0, y: 100.0, isSolar: true, squishX: 1.2),
+          const GhostFrame(x: 62.0, y: 95.0, isSolar: false, squishY: 0.8),
+        ];
+        final ghostRun = GhostRun(
+          chamberId: 1,
+          clearTimeMs: 100,
+          frames: frames,
+        );
+
+        final json = ghostRun.toJson();
+        final revived = GhostRun.fromJson(json);
+
+        expect(revived.chamberId, equals(1));
+        expect(revived.clearTimeMs, equals(100));
+        expect(revived.frames.length, equals(3));
+        expect(revived.frames[2].isSolar, isFalse);
+        expect(revived.frames[2].x, equals(62.0));
+
+        // Test persistence saving and retrieval
+        SharedPreferences.setMockInitialValues({});
+        final persistence = PersistenceService();
+        await persistence.init();
+
+        expect(persistence.getGhostEnabled(), isTrue);
+        await persistence.saveGhostEnabled(false);
+        expect(persistence.getGhostEnabled(), isFalse);
+
+        await persistence.saveGhostRun(ghostRun);
+        final loadedGhost = persistence.getGhostRun(1);
+        expect(loadedGhost, isNotNull);
+        expect(loadedGhost!.chamberId, equals(1));
+        expect(loadedGhost.frames.length, equals(3));
       },
     );
   });

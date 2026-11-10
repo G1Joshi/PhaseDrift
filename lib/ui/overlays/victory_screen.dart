@@ -77,11 +77,15 @@ class _VictoryScreenState extends State<VictoryScreen> {
         () => _focusedIndex = (_focusedIndex - 1 + totalOptions) % totalOptions,
       );
     } else if (event.logicalKey == LogicalKeyboardKey.enter ||
-        event.logicalKey == LogicalKeyboardKey.space) {
+        event.logicalKey == LogicalKeyboardKey.space ||
+        event.logicalKey == LogicalKeyboardKey.gameButtonA ||
+        event.logicalKey == LogicalKeyboardKey.gameButtonStart) {
       _activateFocused(hasNext);
-    } else if (event.logicalKey == LogicalKeyboardKey.keyR) {
+    } else if (event.logicalKey == LogicalKeyboardKey.keyR ||
+        event.logicalKey == LogicalKeyboardKey.gameButtonSelect) {
       widget.onRetry();
-    } else if (event.logicalKey == LogicalKeyboardKey.escape) {
+    } else if (event.logicalKey == LogicalKeyboardKey.escape ||
+        event.logicalKey == LogicalKeyboardKey.gameButtonB) {
       widget.onChamberSelect?.call();
     }
   }
@@ -711,17 +715,29 @@ class _VictoryScreenState extends State<VictoryScreen> {
                                 accentColor: rank.color,
                               ),
                             ],
-                            _buildButton(
-                              label: 'RETRY CHAMBER',
-                              onTap: widget.onRetry,
-                              index: hasNext ? 1 : 0,
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildButton(
+                                    label: 'RETRY CHAMBER',
+                                    onTap: widget.onRetry,
+                                    index: hasNext ? 1 : 0,
+                                    margin: EdgeInsets.zero,
+                                  ),
+                                ),
+                                if (widget.onChamberSelect != null) ...[
+                                  const SizedBox(width: 8.0),
+                                  Expanded(
+                                    child: _buildButton(
+                                      label: 'CHAMBER SELECT',
+                                      onTap: widget.onChamberSelect!,
+                                      index: hasNext ? 2 : 1,
+                                      margin: EdgeInsets.zero,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
-                            if (widget.onChamberSelect != null)
-                              _buildButton(
-                                label: 'CHAMBER SELECT',
-                                onTap: widget.onChamberSelect!,
-                                index: hasNext ? 2 : 1,
-                              ),
                             const SizedBox(height: 12.0),
                             Text(
                               AppPlatform.isTouchDevice(context)

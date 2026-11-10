@@ -5,6 +5,7 @@ import '../../core/domain/domain.dart';
 import '../../core/services/services.dart';
 import '../../core/theme/theme.dart';
 import '../../game/levels/levels.dart';
+import '../controls/chamfer_button.dart';
 import '../hud/split_stopwatch.dart';
 import '../overlays/milestones_dialog.dart';
 
@@ -84,7 +85,8 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
           event.logicalKey == LogicalKeyboardKey.keyA) {
         setState(() => _focusedSector = (_focusedSector - 1).clamp(0, 5));
       } else if (event.logicalKey == LogicalKeyboardKey.enter ||
-          event.logicalKey == LogicalKeyboardKey.space) {
+          event.logicalKey == LogicalKeyboardKey.space ||
+          event.logicalKey == LogicalKeyboardKey.gameButtonA) {
         setState(() {
           _selectedSector = _focusedSector == 5
               ? ChamberTier.endless
@@ -92,7 +94,8 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
           _focusedChamberIndex = 0;
         });
       } else if (event.logicalKey == LogicalKeyboardKey.escape ||
-          event.logicalKey == LogicalKeyboardKey.backspace) {
+          event.logicalKey == LogicalKeyboardKey.backspace ||
+          event.logicalKey == LogicalKeyboardKey.gameButtonB) {
         widget.onBack?.call();
       }
     } else {
@@ -135,7 +138,8 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
           ),
         );
       } else if (event.logicalKey == LogicalKeyboardKey.enter ||
-          event.logicalKey == LogicalKeyboardKey.space) {
+          event.logicalKey == LogicalKeyboardKey.space ||
+          event.logicalKey == LogicalKeyboardKey.gameButtonA) {
         if (_focusedChamberIndex < displayed.length) {
           final c = displayed[_focusedChamberIndex];
           final firstInSector = ProgressionService.isFirstChamberOfSector(
@@ -145,15 +149,37 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
               (_records[c.chamberId]?.isUnlocked ?? false) || firstInSector;
           if (isUnlocked) {
             widget.onSelectChamber(c);
+          } else {
+            _notifyLockedChamber(c.chamberId);
           }
         } else if (showQuantum) {
           widget.onSelectChamber(ChamberRegistry.getRandomChamber());
         }
       } else if (event.logicalKey == LogicalKeyboardKey.escape ||
-          event.logicalKey == LogicalKeyboardKey.backspace) {
+          event.logicalKey == LogicalKeyboardKey.backspace ||
+          event.logicalKey == LogicalKeyboardKey.gameButtonB) {
         setState(() => _selectedSector = null);
       }
     }
+  }
+
+  void _notifyLockedChamber(int chamberId) {
+    HapticsService.instance.triggerDeath();
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'CHAMBER ${chamberId.toString().padLeft(2, '0')} LOCKED // COMPLETE PREVIOUS SECTOR',
+          style: AppTypography.telemetryLabel.copyWith(
+            color: AppColors.canvasDark,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        backgroundColor: AppColors.solarAmber,
+        duration: const Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   int _getSectorClearedCount(ChamberTier tier) {
@@ -196,6 +222,7 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
+          HapticsService.instance.triggerClick();
           setState(() {
             _selectedSector = tier;
             _focusedChamberIndex = 0;
@@ -427,7 +454,14 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: isUnlocked ? () => widget.onSelectChamber(chamber) : null,
+        onTap: () {
+          if (isUnlocked) {
+            HapticsService.instance.triggerClick();
+            widget.onSelectChamber(chamber);
+          } else {
+            _notifyLockedChamber(chamber.chamberId);
+          }
+        },
         customBorder: AppDecorations.chamferShape(
           chamfer: AppDecorations.chamferMd,
         ),
@@ -617,11 +651,145 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
     );
   }
 
+  void _showQuantumSeedDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360.0),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 24.0),
+              padding: const EdgeInsets.all(20.0),
+              decoration: ShapeDecoration(
+                color: AppColors.canvasDark,
+                shape: AppDecorations.chamferShape(
+                  chamfer: AppDecorations.chamferMd,
+                  borderColor: AppColors.voidCyan,
+                  borderWidth: 1.5,
+                ),
+                shadows: [
+                  BoxShadow(
+                    color: AppColors.voidCyan.withValues(alpha: 0.25),
+                    blurRadius: 24.0,
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'QUANTUM DRIFT // SEED',
+                          style: AppTypography.sectionHeader.copyWith(
+                            color: AppColors.voidCyan,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.close,
+                            color: AppColors.onSurfaceVariant,
+                            size: 18.0,
+                          ),
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10.0),
+                    Text(
+                      'Launch an unpredictable anomaly or enter a custom integer seed to race on an identical topology.',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.onSurfaceVariant,
+                        fontSize: 11.0,
+                      ),
+                    ),
+                    const SizedBox(height: 14.0),
+                    TextField(
+                      controller: controller,
+                      keyboardType: TextInputType.number,
+                      style: AppTypography.telemetryValueSm.copyWith(
+                        color: AppColors.voidCyan,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'INTEGER SEED (E.G. 1337)',
+                        hintStyle: AppTypography.telemetryLabel.copyWith(
+                          color: AppColors.structuralSeam,
+                          fontSize: 10.0,
+                        ),
+                        filled: true,
+                        fillColor: AppColors.interactiveModule,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(4.0),
+                          borderSide: const BorderSide(
+                            color: AppColors.voidCyan,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12.0,
+                          vertical: 8.0,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16.0),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ChamferButton(
+                            label: 'RANDOM',
+                            onTap: () {
+                              Navigator.of(dialogContext).pop();
+                              widget.onSelectChamber(
+                                ChamberRegistry.getRandomChamber(),
+                              );
+                            },
+                            margin: EdgeInsets.zero,
+                            padding: const EdgeInsets.symmetric(vertical: 10.0),
+                            fontSize: 12.0,
+                          ),
+                        ),
+                        const SizedBox(width: 8.0),
+                        Expanded(
+                          child: ChamferButton(
+                            label: 'LAUNCH SEED',
+                            onTap: () {
+                              final text = controller.text.trim();
+                              final seed = int.tryParse(text);
+                              Navigator.of(dialogContext).pop();
+                              widget.onSelectChamber(
+                                ChamberRegistry.getRandomChamber(seed: seed),
+                              );
+                            },
+                            isPrimary: true,
+                            accentColor: AppColors.voidCyan,
+                            margin: EdgeInsets.zero,
+                            padding: const EdgeInsets.symmetric(vertical: 10.0),
+                            fontSize: 12.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    ).then((_) => controller.dispose());
+  }
+
   Widget _buildQuantumDriftCard({bool isFocused = false}) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => widget.onSelectChamber(ChamberRegistry.getRandomChamber()),
+        onTap: _showQuantumSeedDialog,
         customBorder: AppDecorations.chamferShape(
           chamfer: AppDecorations.chamferMd,
         ),
@@ -739,7 +907,10 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
     final activeColor = color ?? AppColors.voidCyan;
 
     return InkWell(
-      onTap: onTap,
+      onTap: () {
+        HapticsService.instance.triggerClick();
+        onTap();
+      },
       borderRadius: BorderRadius.circular(4.0),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),

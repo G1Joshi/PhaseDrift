@@ -146,7 +146,7 @@ class AudioEngine {
     _crossfadeTimer?.cancel();
     const durationMs = AudioConstants.crossfadeDurationMs;
     const intervalMs = 15;
-    final totalSteps = durationMs ~/ intervalMs;
+    const totalSteps = durationMs ~/ intervalMs;
     var step = 0;
 
     _crossfadeTimer = Timer.periodic(const Duration(milliseconds: intervalMs), (

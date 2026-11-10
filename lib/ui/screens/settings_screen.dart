@@ -45,6 +45,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late bool _isMuted;
   late bool _hapticsEnabled;
   late bool _reduceMotion;
+  late bool _ghostEnabled;
   late double _touchOpacity;
   late double _touchScale;
   late bool _southpaw;
@@ -58,6 +59,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _isMuted = _audio.isMuted;
     _hapticsEnabled = _haptics.isEnabled;
     _reduceMotion = widget.reduceMotion;
+    _ghostEnabled = _persistence.getGhostEnabled();
     final (opacity, scale, southpaw) = _persistence.getTouchSettings();
     _touchOpacity = opacity;
     _touchScale = scale;
@@ -121,17 +123,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           Expanded(
             child: SliderTheme(
-              data: SliderThemeData(
+              data: const SliderThemeData(
                 activeTrackColor: AppColors.solarAmber,
                 inactiveTrackColor: AppColors.structuralSeam,
                 thumbColor: AppColors.solarGold,
                 trackHeight: 3.0,
-                thumbShape: const RoundSliderThumbShape(
-                  enabledThumbRadius: 6.0,
-                ),
-                overlayShape: const RoundSliderOverlayShape(
-                  overlayRadius: 14.0,
-                ),
+                thumbShape: RoundSliderThumbShape(enabledThumbRadius: 6.0),
+                overlayShape: RoundSliderOverlayShape(overlayRadius: 14.0),
               ),
               child: Slider(
                 value: value,
@@ -241,7 +239,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         onKeyEvent: (event) {
           if (event is KeyDownEvent &&
               (event.logicalKey == LogicalKeyboardKey.escape ||
-                  event.logicalKey == LogicalKeyboardKey.backspace)) {
+                  event.logicalKey == LogicalKeyboardKey.backspace ||
+                  event.logicalKey == LogicalKeyboardKey.gameButtonB)) {
             widget.onBack?.call();
           }
         },
@@ -412,7 +411,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
 
                           // Accessibility Section
-                          _buildSectionHeader('ACCESSIBILITY'),
+                          _buildSectionHeader('ACCESSIBILITY & TELEMETRY'),
                           _buildToggleRow(
                             label: 'REDUCE MOTION',
                             subtitle: 'Disables camera trauma shake and chromatic shockwaves',
@@ -421,6 +420,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               setState(() => _reduceMotion = val);
                               _persistence.saveReduceMotion(val);
                               widget.onReduceMotionChanged?.call(val);
+                            },
+                          ),
+                          _buildToggleRow(
+                            label: 'QUANTUM GHOST RUNNER',
+                            subtitle: 'Holographic shadow replay of your Personal Best run',
+                            value: _ghostEnabled,
+                            onChanged: (val) {
+                              setState(() => _ghostEnabled = val);
+                              _persistence.saveGhostEnabled(val);
                             },
                           ),
 

@@ -50,6 +50,13 @@ class HapticsService {
     } catch (_) {}
   }
 
+  Future<void> triggerClick() async {
+    if (!isEnabled) return;
+    try {
+      await HapticFeedback.lightImpact();
+    } catch (_) {}
+  }
+
   Future<void> triggerSlingshot() async {
     if (!isEnabled) return;
     try {

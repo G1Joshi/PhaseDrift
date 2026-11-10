@@ -7,7 +7,7 @@ void main() {
       for (var id = 9; id <= 15; id++) {
         final chamber = ProceduralChamberGenerator.generateChamber(
           chamberId: id,
-          difficulty: (id - 8),
+          difficulty: id - 8,
         );
 
         expect(
