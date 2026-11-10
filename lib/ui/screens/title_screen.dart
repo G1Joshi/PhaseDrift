@@ -58,7 +58,9 @@ class _TitleScreenState extends State<TitleScreen> {
         event.logicalKey == LogicalKeyboardKey.keyW) {
       setState(() => _focusedIndex = (_focusedIndex - 1 + 4) % 4);
     } else if (event.logicalKey == LogicalKeyboardKey.enter ||
-        event.logicalKey == LogicalKeyboardKey.space) {
+        event.logicalKey == LogicalKeyboardKey.space ||
+        event.logicalKey == LogicalKeyboardKey.gameButtonA ||
+        event.logicalKey == LogicalKeyboardKey.gameButtonStart) {
       _activateFocused();
     } else if (event.logicalKey == LogicalKeyboardKey.keyM) {
       MilestonesDialog.show(context);
