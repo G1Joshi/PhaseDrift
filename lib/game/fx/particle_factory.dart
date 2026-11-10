@@ -22,6 +22,14 @@ class ChromaticShockwave extends PositionComponent {
   double _elapsed = 0.0;
   double _radius = 0.0;
 
+  final Paint _innerPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2.0;
+
+  final Paint _outerPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 4.0;
+
   @override
   void update(double dt) {
     super.update(dt);
@@ -38,18 +46,11 @@ class ChromaticShockwave extends PositionComponent {
     super.render(canvas);
     final alpha = (1.0 - (_elapsed / lifetime)).clamp(0.0, 1.0);
 
-    final innerPaint = Paint()
-      ..color = accentColor.withValues(alpha: alpha * 0.8)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+    _innerPaint.color = accentColor.withValues(alpha: alpha * 0.8);
+    _outerPaint.color = primaryColor.withValues(alpha: alpha * 0.5);
 
-    final outerPaint = Paint()
-      ..color = primaryColor.withValues(alpha: alpha * 0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.0;
-
-    canvas.drawCircle(Offset.zero, _radius, outerPaint);
-    canvas.drawCircle(Offset.zero, _radius * 0.85, innerPaint);
+    canvas.drawCircle(Offset.zero, _radius, _outerPaint);
+    canvas.drawCircle(Offset.zero, _radius * 0.85, _innerPaint);
   }
 }
 
@@ -70,6 +71,7 @@ class SparkParticle extends PositionComponent {
   final double gravity;
 
   double _elapsed = 0.0;
+  final Paint _paint = Paint()..style = PaintingStyle.fill;
 
   @override
   void update(double dt) {
@@ -91,11 +93,8 @@ class SparkParticle extends PositionComponent {
     final alpha = 1.0 - progress;
     final currentRadius = radius * (1.0 - 0.4 * progress);
 
-    final paint = Paint()
-      ..color = color.withValues(alpha: alpha)
-      ..style = PaintingStyle.fill;
-
-    canvas.drawCircle(Offset.zero, currentRadius, paint);
+    _paint.color = color.withValues(alpha: alpha);
+    canvas.drawCircle(Offset.zero, currentRadius, _paint);
   }
 }
 

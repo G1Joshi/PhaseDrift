@@ -38,6 +38,13 @@ class QuantumBackdrop extends PositionComponent
   double _phaseLerp = 0.0;
   double _elapsed = 0.0;
 
+  final Paint _bgPaint = Paint();
+  final Paint _nebulaPaint = Paint();
+  final Paint _gridPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.0;
+  final Paint _particlePaint = Paint();
+
   @override
   void update(double dt) {
     super.update(dt);
@@ -64,8 +71,8 @@ class QuantumBackdrop extends PositionComponent
     const solarBase = Color(0xFF0A0704);
     const voidBase = Color(0xFF03080E);
     final currentBase = Color.lerp(solarBase, voidBase, _phaseLerp)!;
-    final bgPaint = Paint()..color = currentBase;
-    canvas.drawRect(rect, bgPaint);
+    _bgPaint.color = currentBase;
+    canvas.drawRect(rect, _bgPaint);
 
     // 2. Active Reality Aurora Nebula
     final auroraColor = Color.lerp(
@@ -74,18 +81,17 @@ class QuantumBackdrop extends PositionComponent
       _phaseLerp,
     )!;
     final auroraY = _phaseLerp < 0.5 ? size.y * 0.85 : size.y * 0.15;
-    final nebulaPaint = Paint()
-      ..shader = Gradient.radial(
-        Offset(size.x * 0.5, auroraY),
-        size.x * 0.65,
-        [
-          auroraColor,
-          tier.color.withValues(alpha: 0.04),
-          const Color(0x00000000),
-        ],
-        [0.0, 0.5, 1.0],
-      );
-    canvas.drawRect(rect, nebulaPaint);
+    _nebulaPaint.shader = Gradient.radial(
+      Offset(size.x * 0.5, auroraY),
+      size.x * 0.65,
+      [
+        auroraColor,
+        tier.color.withValues(alpha: 0.04),
+        const Color(0x00000000),
+      ],
+      [0.0, 0.5, 1.0],
+    );
+    canvas.drawRect(rect, _nebulaPaint);
 
     // 3. High-Contrast Dual-Reality Grid
     final realityGrid = Color.lerp(
@@ -99,17 +105,14 @@ class QuantumBackdrop extends PositionComponent
       0.35,
     )!;
 
-    final gridPaint = Paint()
-      ..color = gridColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
+    _gridPaint.color = gridColor;
 
     const cellSize = 32.0;
     for (var x = 0.0; x <= size.x; x += cellSize) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.y), gridPaint);
+      canvas.drawLine(Offset(x, 0), Offset(x, size.y), _gridPaint);
     }
     for (var y = 0.0; y <= size.y; y += cellSize) {
-      canvas.drawLine(Offset(0, y), Offset(size.x, y), gridPaint);
+      canvas.drawLine(Offset(0, y), Offset(size.x, y), _gridPaint);
     }
 
     // 4. Ambient Drifting Quantum Embers
@@ -124,10 +127,10 @@ class QuantumBackdrop extends PositionComponent
       0.25,
     )!;
 
-    final particlePaint = Paint()..color = particleColor;
+    _particlePaint.color = particleColor;
     for (final p in _particles) {
       final osc = math.sin(_elapsed * 2.0 + p.phaseOffset) * 2.0;
-      canvas.drawCircle(Offset(p.x + osc, p.y), p.radius, particlePaint);
+      canvas.drawCircle(Offset(p.x + osc, p.y), p.radius, _particlePaint);
     }
   }
 }
