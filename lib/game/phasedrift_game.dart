@@ -10,6 +10,7 @@ import '../core/services/services.dart';
 import '../core/theme/theme.dart';
 import '../ui/controls/input_controller.dart';
 import 'components/environment/environment.dart';
+import 'components/player/ghost_replay_component.dart';
 import 'components/player/player_component.dart';
 import 'constants/kinematic_constants.dart';
 import 'fx/fx.dart';
@@ -34,6 +35,11 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
   bool isCompleted = false;
   bool reduceMotion = false;
   double ceilingDriftSeconds = 0.0;
+  int sessionShifts = 0;
+  int sessionJumps = 0;
+  int sessionDeaths = 0;
+  final List<GhostFrame> _recordedFrames = [];
+  double _ghostSampleTimer = 0.0;
   final ValueNotifier<GamePhase> phaseNotifier = ValueNotifier<GamePhase>(
     const SolarPhase(),
   );
@@ -70,6 +76,15 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     final spawn = def?.spawnPoint ?? initialPlayerPosition ?? Vector2(100, 200);
     _player = PlayerComponent(initialPosition: spawn);
     world.add(_player!);
+
+    final chamberId = def?.chamberId;
+    if (chamberId != null && PersistenceService.instance.getGhostEnabled()) {
+      final savedGhost = PersistenceService.instance.getGhostRun(chamberId);
+      if (savedGhost != null && savedGhost.frames.isNotEmpty) {
+        world.add(GhostReplayComponent(ghostRun: savedGhost));
+      }
+    }
+
     camera.follow(_player!);
 
     inputController = InputController(
@@ -79,6 +94,7 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
       },
       onJumpPressed: () {
         isTimerStarted = true;
+        sessionJumps++;
         player.kinematics.pressJump();
         player.triggerJumpSquish();
         AudioEngine.instance.playJump();
@@ -89,6 +105,7 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
       },
       onShiftPressed: () {
         isTimerStarted = true;
+        sessionShifts++;
         MilestoneService.instance.triggerUnlock('first_shift');
         final highSpeed = player.kinematics.vy.abs() > 180.0;
         player.kinematics.triggerShift();
@@ -96,8 +113,8 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
         AudioEngine.instance.playShift();
         AudioEngine.instance.crossfadeToPhase(player.kinematics.phase);
         screenShake.addTrauma(highSpeed ? 0.45 : 0.25);
-        HapticsService.instance.triggerShift();
         if (highSpeed) {
+          HapticsService.instance.triggerSlingshot();
           world.add(
             FloatingCallout(
               position: Vector2(player.position.x, player.position.y - 20.0),
@@ -105,6 +122,8 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
               color: player.kinematics.phase.primaryColor,
             ),
           );
+        } else {
+          HapticsService.instance.triggerShift();
         }
         if (!reduceMotion) {
           world.add(
@@ -229,7 +248,7 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
 
   void collectShard(int shardIndex, Vector2 shardPosition) {
     if (shardIndex >= 0 && shardIndex < 3) {
-      shardsCollectedMask |= (1 << shardIndex);
+      shardsCollectedMask |= 1 << shardIndex;
       AudioEngine.instance.playShard();
       HapticsService.instance.triggerShard();
 
@@ -279,6 +298,7 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
   }
 
   void killPlayer() {
+    sessionDeaths++;
     AudioEngine.instance.playDeath();
     HapticsService.instance.triggerDeath();
     screenShake.addTrauma(0.70);
@@ -298,20 +318,44 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     phaseNotifier.value = const SolarPhase();
     player.kinematics.isGrounded = false;
     AudioEngine.instance.crossfadeToPhase(const SolarPhase());
+    _recordedFrames.clear();
+    _ghostSampleTimer = 0.0;
+    for (final ghost in world.children.query<GhostReplayComponent>()) {
+      ghost.reset();
+    }
   }
 
   void completeChamber() async {
     if (isCompleted) return;
     isCompleted = true;
     isPaused = true;
-    AudioEngine.instance.playShard();
+    await AudioEngine.instance.playShard();
 
     final def = chamber;
     if (def != null) {
+      if (_recordedFrames.isNotEmpty) {
+        final prevRecord = PersistenceService.instance.getChamberRecord(
+          def.chamberId,
+        );
+        final isNewPb =
+            prevRecord.bestTimeMs == null || elapsedMs < prevRecord.bestTimeMs!;
+        if (isNewPb) {
+          await PersistenceService.instance.saveGhostRun(
+            GhostRun(
+              chamberId: def.chamberId,
+              clearTimeMs: elapsedMs,
+              frames: List.of(_recordedFrames),
+            ),
+          );
+        }
+      }
       await ProgressionService.instance.completeChamber(
         chamberId: def.chamberId,
         completionTimeMs: elapsedMs,
         shardsMask: shardsCollectedMask,
+        shiftsCount: sessionShifts,
+        jumpsCount: sessionJumps,
+        deathsCount: sessionDeaths,
       );
     }
     overlays.add('VictoryScreen');
@@ -322,6 +366,14 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     isTimerStarted = false;
     shardsCollectedMask = 0;
     isCompleted = false;
+    sessionShifts = 0;
+    sessionJumps = 0;
+    sessionDeaths = 0;
+    _recordedFrames.clear();
+    _ghostSampleTimer = 0.0;
+    for (final ghost in world.children.query<GhostReplayComponent>()) {
+      ghost.reset();
+    }
     overlays.remove('VictoryScreen');
     resumeGame();
 
@@ -373,6 +425,23 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     final p = _player;
     if (p == null) return;
     final playerRect = p.toRect();
+
+    // Sample Ghost Replay Frames
+    if (isTimerStarted && !isPaused && !isCompleted) {
+      _ghostSampleTimer += dt;
+      if (_ghostSampleTimer >= GhostReplayComponent.sampleInterval) {
+        _ghostSampleTimer = 0.0;
+        _recordedFrames.add(
+          GhostFrame(
+            x: p.position.x,
+            y: p.position.y,
+            isSolar: p.kinematics.isSolar,
+            squishX: p.squishX,
+            squishY: p.squishY,
+          ),
+        );
+      }
+    }
 
     // Check kinetic milestones
     if (p.kinematics.vx.abs() >= 220.0) {

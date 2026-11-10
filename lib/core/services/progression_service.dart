@@ -50,18 +50,16 @@ class ProgressionService {
 
   Future<List<ChamberRecord>> loadAllRecords(int totalChambers) async {
     await _ensureInitialized();
-    final list = <ChamberRecord>[];
-    for (var id = 1; id <= totalChambers; id++) {
-      final rec = await loadRecord(id);
-      list.add(rec);
-    }
-    return list;
+    return _persistence.getAllChamberRecords(totalChambers: totalChambers);
   }
 
   Future<ChamberRecord> completeChamber({
     required int chamberId,
     required int completionTimeMs,
     required int shardsMask,
+    int shiftsCount = 0,
+    int jumpsCount = 0,
+    int deathsCount = 0,
   }) async {
     await _ensureInitialized();
     final currentRecord = _persistence.getChamberRecord(chamberId);
@@ -87,7 +85,13 @@ class ProgressionService {
     // Update global player stats
     final stats = _persistence.getPlayerStats();
     final newShards = updated.shardCount - currentRecord.shardCount;
-    var updatedStats = stats.addPlayTime(completionTimeMs);
+    var updatedStats = stats
+        .addPlayTime(completionTimeMs)
+        .copyWith(
+          totalShifts: stats.totalShifts + shiftsCount,
+          totalJumps: stats.totalJumps + jumpsCount,
+          totalDeaths: stats.totalDeaths + deathsCount,
+        );
     if (newShards > 0) {
       updatedStats = updatedStats.addShards(newShards);
     }
