@@ -102,7 +102,7 @@ void main() {
       controller.triggerPause();
 
       // Test R key down event triggers restart callback
-      final keyEvent = KeyDownEvent(
+      const keyEvent = KeyDownEvent(
         physicalKey: PhysicalKeyboardKey.keyR,
         logicalKey: LogicalKeyboardKey.keyR,
         timeStamp: Duration.zero,
@@ -115,6 +115,39 @@ void main() {
       expect(paused, isTrue);
       expect(restarted, isTrue);
       expect(handled, isTrue);
+    });
+
+    test('handles gamepad buttons for jump, shift, and move', () {
+      var jumped = false;
+      var shifted = false;
+      final controller = InputController(
+        onJumpPressed: () => jumped = true,
+        onShiftPressed: () => shifted = true,
+      );
+
+      const jumpEvent = KeyDownEvent(
+        physicalKey: PhysicalKeyboardKey.gameButtonA,
+        logicalKey: LogicalKeyboardKey.gameButtonA,
+        timeStamp: Duration.zero,
+      );
+      final jumpHandled = controller.handleKeyEvent(jumpEvent, {
+        LogicalKeyboardKey.gameButtonA,
+      });
+
+      expect(jumped, isTrue);
+      expect(jumpHandled, isTrue);
+
+      const shiftEvent = KeyDownEvent(
+        physicalKey: PhysicalKeyboardKey.gameButtonB,
+        logicalKey: LogicalKeyboardKey.gameButtonB,
+        timeStamp: Duration.zero,
+      );
+      final shiftHandled = controller.handleKeyEvent(shiftEvent, {
+        LogicalKeyboardKey.gameButtonB,
+      });
+
+      expect(shifted, isTrue);
+      expect(shiftHandled, isTrue);
     });
   });
 

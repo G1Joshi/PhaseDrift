@@ -74,19 +74,26 @@ class InputController {
     if (event is KeyDownEvent || event is KeyRepeatEvent) {
       if (event.logicalKey == LogicalKeyboardKey.space ||
           event.logicalKey == LogicalKeyboardKey.arrowUp ||
-          event.logicalKey == LogicalKeyboardKey.keyW) {
+          event.logicalKey == LogicalKeyboardKey.keyW ||
+          event.logicalKey == LogicalKeyboardKey.gameButtonA) {
         if (event is KeyDownEvent) pressJump();
         return true;
       } else if (event.logicalKey == LogicalKeyboardKey.shiftLeft ||
           event.logicalKey == LogicalKeyboardKey.shiftRight ||
-          event.logicalKey == LogicalKeyboardKey.keyE) {
+          event.logicalKey == LogicalKeyboardKey.keyE ||
+          event.logicalKey == LogicalKeyboardKey.gameButtonB ||
+          event.logicalKey == LogicalKeyboardKey.gameButtonX ||
+          event.logicalKey == LogicalKeyboardKey.gameButtonRight1 ||
+          event.logicalKey == LogicalKeyboardKey.gameButtonLeft1) {
         if (event is KeyDownEvent) triggerShift();
         return true;
       } else if (event.logicalKey == LogicalKeyboardKey.escape ||
-          event.logicalKey == LogicalKeyboardKey.keyP) {
+          event.logicalKey == LogicalKeyboardKey.keyP ||
+          event.logicalKey == LogicalKeyboardKey.gameButtonStart) {
         if (event is KeyDownEvent) triggerPause();
         return true;
-      } else if (event.logicalKey == LogicalKeyboardKey.keyR) {
+      } else if (event.logicalKey == LogicalKeyboardKey.keyR ||
+          event.logicalKey == LogicalKeyboardKey.gameButtonSelect) {
         if (event is KeyDownEvent) onRestartPressed?.call();
         return true;
       } else if (isLeft || isRight) {
@@ -95,7 +102,8 @@ class InputController {
     } else if (event is KeyUpEvent) {
       if (event.logicalKey == LogicalKeyboardKey.space ||
           event.logicalKey == LogicalKeyboardKey.arrowUp ||
-          event.logicalKey == LogicalKeyboardKey.keyW) {
+          event.logicalKey == LogicalKeyboardKey.keyW ||
+          event.logicalKey == LogicalKeyboardKey.gameButtonA) {
         releaseJump();
         return true;
       } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft ||
