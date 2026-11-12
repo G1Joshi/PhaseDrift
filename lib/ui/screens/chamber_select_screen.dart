@@ -64,10 +64,19 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
     });
   }
 
+  void _openMilestones() {
+    MilestonesDialog.show(context).then((_) {
+      if (mounted) {
+        _loadProgress();
+        _focusNode.requestFocus();
+      }
+    });
+  }
+
   void _handleKeyEvent(KeyEvent event) {
     if (event is! KeyDownEvent) return;
     if (event.logicalKey == LogicalKeyboardKey.keyM) {
-      MilestonesDialog.show(context);
+      _openMilestones();
       return;
     }
 
@@ -782,7 +791,10 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
           ),
         );
       },
-    ).then((_) => controller.dispose());
+    ).then((_) {
+      controller.dispose();
+      if (mounted) _focusNode.requestFocus();
+    });
   }
 
   Widget _buildQuantumDriftCard({bool isFocused = false}) {
@@ -1019,9 +1031,7 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
                     Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap: () => MilestonesDialog.show(context).then((_) {
-                          if (mounted) _loadProgress();
-                        }),
+                        onTap: _openMilestones,
                         customBorder: AppDecorations.chamferShape(
                           chamfer: AppDecorations.chamferXs,
                         ),

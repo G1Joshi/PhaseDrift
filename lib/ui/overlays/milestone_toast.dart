@@ -65,93 +65,95 @@ class _MilestoneToastOverlayState extends State<MilestoneToastOverlay>
     if (_currentMilestone == null) return const SizedBox.shrink();
     final milestone = _currentMilestone!;
 
-    return Align(
-      alignment: Alignment.topCenter,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.only(top: 16.0),
-          child: SlideTransition(
-            position: _slideAnim,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 10.0,
-              ),
-              constraints: const BoxConstraints(maxWidth: 420.0),
-              decoration: ShapeDecoration(
-                color: AppColors.canvasDark.withValues(alpha: 0.95),
-                shape: AppDecorations.chamferShape(
-                  chamfer: AppDecorations.chamferMd,
-                  borderColor: milestone.tier.color,
-                  borderWidth: 1.5,
+    return IgnorePointer(
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 16.0),
+            child: SlideTransition(
+              position: _slideAnim,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 10.0,
                 ),
-                shadows: [
-                  BoxShadow(
-                    color: milestone.tier.color.withValues(alpha: 0.35),
-                    blurRadius: 20.0,
-                    spreadRadius: 2.0,
+                constraints: const BoxConstraints(maxWidth: 420.0),
+                decoration: ShapeDecoration(
+                  color: AppColors.canvasDark.withValues(alpha: 0.95),
+                  shape: AppDecorations.chamferShape(
+                    chamfer: AppDecorations.chamferMd,
+                    borderColor: milestone.tier.color,
+                    borderWidth: 1.5,
                   ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6.0),
-                    decoration: ShapeDecoration(
-                      color: milestone.tier.color.withValues(alpha: 0.20),
-                      shape: AppDecorations.chamferShape(
-                        chamfer: AppDecorations.chamferXs,
-                        borderColor: milestone.tier.color,
+                  shadows: [
+                    BoxShadow(
+                      color: milestone.tier.color.withValues(alpha: 0.35),
+                      blurRadius: 20.0,
+                      spreadRadius: 2.0,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6.0),
+                      decoration: ShapeDecoration(
+                        color: milestone.tier.color.withValues(alpha: 0.20),
+                        shape: AppDecorations.chamferShape(
+                          chamfer: AppDecorations.chamferXs,
+                          borderColor: milestone.tier.color,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.emoji_events,
+                        color: milestone.tier.color,
+                        size: 20.0,
                       ),
                     ),
-                    child: Icon(
-                      Icons.emoji_events,
-                      color: milestone.tier.color,
-                      size: 20.0,
-                    ),
-                  ),
-                  const SizedBox(width: 12.0),
-                  Flexible(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'MILESTONE UNLOCKED // ',
-                              style: AppTypography.telemetryLabel.copyWith(
-                                color: milestone.tier.color,
-                                fontSize: 9.0,
-                                fontWeight: FontWeight.w800,
+                    const SizedBox(width: 12.0),
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'MILESTONE UNLOCKED // ',
+                                style: AppTypography.telemetryLabel.copyWith(
+                                  color: milestone.tier.color,
+                                  fontSize: 9.0,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
-                            ),
-                            Text(
-                              milestone.tier.label,
-                              style: AppTypography.telemetryLabel.copyWith(
-                                color: AppColors.onSurface,
-                                fontSize: 9.0,
-                                fontWeight: FontWeight.w800,
+                              Text(
+                                milestone.tier.label,
+                                style: AppTypography.telemetryLabel.copyWith(
+                                  color: AppColors.onSurface,
+                                  fontSize: 9.0,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          milestone.title,
-                          style: AppTypography.button.copyWith(
-                            color: AppColors.onSurface,
-                            fontSize: 12.0,
-                            fontWeight: FontWeight.w800,
+                            ],
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                          Text(
+                            milestone.title,
+                            style: AppTypography.button.copyWith(
+                              color: AppColors.onSurface,
+                              fontSize: 12.0,
+                              fontWeight: FontWeight.w800,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

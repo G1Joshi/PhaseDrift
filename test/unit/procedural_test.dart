@@ -3,6 +3,23 @@ import 'package:phasedrift/game/levels/levels.dart';
 
 void main() {
   group('ProceduralChamberGenerator Logic', () {
+    test('all 50 campaign chambers pass structural validation', () {
+      final all = ChamberRegistry.allChambers;
+      expect(all.length, equals(50));
+      for (final chamber in all) {
+        expect(
+          chamber.isValid,
+          isTrue,
+          reason:
+              'Campaign Chamber ${chamber.chamberId} must pass structural validation',
+        );
+        expect(chamber.shards.length, equals(3));
+        expect(chamber.parTimeMs, greaterThan(10000));
+        expect(chamber.width, greaterThanOrEqualTo(480.0));
+        expect(chamber.height, greaterThanOrEqualTo(260.0));
+      }
+    });
+
     test('generates valid solvable chambers across difficulty tiers', () {
       for (var id = 9; id <= 15; id++) {
         final chamber = ProceduralChamberGenerator.generateChamber(
@@ -51,6 +68,13 @@ void main() {
         allowEndless: true,
       );
       expect(endlessChamber51?.chamberId, equals(51));
+
+      final nextRandomAnomaly = ChamberRegistry.getNextChamber(
+        999,
+        allowEndless: true,
+      );
+      expect(nextRandomAnomaly?.chamberId, equals(999));
+      expect(nextRandomAnomaly?.isValid, isTrue);
     });
   });
 }
