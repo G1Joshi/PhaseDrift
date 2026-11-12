@@ -14,10 +14,15 @@ class HazardSpike extends PositionComponent {
 
   final SpikeOrientation orientation;
 
-  @override
-  void render(Canvas canvas) {
-    super.render(canvas);
+  static final Paint _fillPaint = Paint()..color = AppColors.hazardRed;
+  static final Paint _strokePaint = Paint()
+    ..color = AppColors.onSurface
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.0;
 
+  Path? _cachedPath;
+
+  Path _buildPath() {
     final path = Path();
     switch (orientation) {
       case SpikeOrientation.up:
@@ -42,14 +47,15 @@ class HazardSpike extends PositionComponent {
         break;
     }
     path.close();
+    return path;
+  }
 
-    final fillPaint = Paint()..color = AppColors.hazardRed;
-    final strokePaint = Paint()
-      ..color = AppColors.onSurface
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
 
-    canvas.drawPath(path, fillPaint);
-    canvas.drawPath(path, strokePaint);
+    final path = _cachedPath ??= _buildPath();
+    canvas.drawPath(path, _fillPaint);
+    canvas.drawPath(path, _strokePaint);
   }
 }

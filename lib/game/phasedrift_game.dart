@@ -24,7 +24,8 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
 
   PlayerComponent? _player;
   PlayerComponent get player => _player!;
-  late final InputController inputController;
+  InputController? _inputController;
+  InputController get inputController => _inputController!;
   final ScreenShake screenShake = ScreenShake();
 
   double moveInput = 0.0;
@@ -38,6 +39,7 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
   int sessionShifts = 0;
   int sessionJumps = 0;
   int sessionDeaths = 0;
+  static const int _maxGhostFrames = 3600;
   final List<GhostFrame> _recordedFrames = [];
   double _ghostSampleTimer = 0.0;
   final ValueNotifier<GamePhase> phaseNotifier = ValueNotifier<GamePhase>(
@@ -55,12 +57,31 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
   }
 
   @override
+  void onDispose() {
+    phaseNotifier.dispose();
+    super.onDispose();
+  }
+
+  @override
   Color backgroundColor() => (_player != null && !player.kinematics.isSolar)
       ? const Color(0xFF03070C)
       : const Color(0xFF090704);
 
   @override
   Future<void> onLoad() async {
+    world.children.register<UniversalBlock>();
+    world.children.register<PhaseBlock>();
+    world.children.register<MovingPlatform>();
+    world.children.register<PhaseLadder>();
+    world.children.register<ChronoShard>();
+    world.children.register<ShiftBeacon>();
+    world.children.register<HazardSpike>();
+    world.children.register<PhaseGate>();
+    world.children.register<TachyonPad>();
+    world.children.register<ExitPortal>();
+    world.children.register<FloatingCallout>();
+    world.children.register<GhostReplayComponent>();
+
     camera.viewport = FixedResolutionViewport(
       resolution: Vector2(
         KinematicConstants.virtualWidth,
@@ -77,17 +98,11 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     _player = PlayerComponent(initialPosition: spawn);
     world.add(_player!);
 
-    final chamberId = def?.chamberId;
-    if (chamberId != null && PersistenceService.instance.getGhostEnabled()) {
-      final savedGhost = PersistenceService.instance.getGhostRun(chamberId);
-      if (savedGhost != null && savedGhost.frames.isNotEmpty) {
-        world.add(GhostReplayComponent(ghostRun: savedGhost));
-      }
-    }
+    _spawnGhostForChamber(def?.chamberId);
 
     camera.follow(_player!);
 
-    inputController = InputController(
+    _inputController = InputController(
       onMoveChanged: (axis) {
         moveInput = axis;
         if (axis.abs() > 0.05) isTimerStarted = true;
@@ -225,8 +240,24 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     world.add(ExitPortal(position: def.portalPosition));
   }
 
+  void _spawnGhostForChamber(int? chamberId) {
+    for (final ghost in world.children.query<GhostReplayComponent>()) {
+      ghost.removeFromParent();
+    }
+    if (chamberId == null ||
+        chamberId == 999 ||
+        !PersistenceService.instance.getGhostEnabled()) {
+      return;
+    }
+    final savedGhost = PersistenceService.instance.getGhostRun(chamberId);
+    if (savedGhost != null && savedGhost.frames.isNotEmpty) {
+      world.add(GhostReplayComponent(ghostRun: savedGhost));
+    }
+  }
+
   void pauseGame() {
     isPaused = true;
+    _inputController?.reset();
     overlays.add('PauseMenu');
     AudioEngine.instance.pauseMusic();
   }
@@ -299,6 +330,7 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
 
   void killPlayer() {
     sessionDeaths++;
+    _inputController?.reset();
     AudioEngine.instance.playDeath();
     HapticsService.instance.triggerDeath();
     screenShake.addTrauma(0.70);
@@ -308,6 +340,8 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     final spawn =
         chamber?.spawnPoint ?? initialPlayerPosition ?? Vector2(100, 200);
     player.position.setFrom(spawn);
+    player.squishX = 1.0;
+    player.squishY = 1.0;
     player.kinematics.x = spawn.x;
     player.kinematics.y = spawn.y;
     player.kinematics.vx = 0.0;
@@ -318,22 +352,18 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     phaseNotifier.value = const SolarPhase();
     player.kinematics.isGrounded = false;
     AudioEngine.instance.crossfadeToPhase(const SolarPhase());
-    _recordedFrames.clear();
-    _ghostSampleTimer = 0.0;
-    for (final ghost in world.children.query<GhostReplayComponent>()) {
-      ghost.reset();
-    }
   }
 
   void completeChamber() async {
     if (isCompleted) return;
     isCompleted = true;
     isPaused = true;
+    _inputController?.reset();
     await AudioEngine.instance.playShard();
 
     final def = chamber;
     if (def != null) {
-      if (_recordedFrames.isNotEmpty) {
+      if (_recordedFrames.isNotEmpty && def.chamberId != 999) {
         final prevRecord = PersistenceService.instance.getChamberRecord(
           def.chamberId,
         );
@@ -366,13 +396,17 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     isTimerStarted = false;
     shardsCollectedMask = 0;
     isCompleted = false;
+    ceilingDriftSeconds = 0.0;
     sessionShifts = 0;
     sessionJumps = 0;
     sessionDeaths = 0;
     _recordedFrames.clear();
     _ghostSampleTimer = 0.0;
-    for (final ghost in world.children.query<GhostReplayComponent>()) {
-      ghost.reset();
+    _inputController?.reset();
+    screenShake.reset();
+    camera.viewfinder.angle = 0.0;
+    for (final callout in world.children.query<FloatingCallout>()) {
+      callout.removeFromParent();
     }
     overlays.remove('VictoryScreen');
     resumeGame();
@@ -381,6 +415,7 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     if (p == null) return;
 
     final def = chamber;
+    _spawnGhostForChamber(def?.chamberId);
     if (def != null) {
       for (final s in world.children.query<ChronoShard>()) {
         s.removeFromParent();
@@ -395,6 +430,8 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     final spawn =
         chamber?.spawnPoint ?? initialPlayerPosition ?? Vector2(100, 200);
     p.position.setFrom(spawn);
+    p.squishX = 1.0;
+    p.squishY = 1.0;
     p.kinematics.x = spawn.x;
     p.kinematics.y = spawn.y;
     p.kinematics.vx = 0.0;
@@ -409,14 +446,15 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
 
   @override
   void update(double dt) {
-    if (isPaused || isCompleted) return;
-    super.update(dt);
+    if (isPaused || isCompleted || dt <= 0) return;
+    final stepDt = dt > 0.1 ? 0.1 : dt;
+    super.update(stepDt);
     if (isTimerStarted) {
-      elapsedTime += dt;
+      elapsedTime += stepDt;
     }
 
     // Apply Screen Shake to viewfinder
-    final (shakeOffset, shakeAngle) = screenShake.update(dt);
+    final (shakeOffset, shakeAngle) = screenShake.update(stepDt);
     if (shakeOffset.x != 0 || shakeOffset.y != 0) {
       camera.viewfinder.position.add(shakeOffset);
     }
@@ -428,18 +466,20 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
 
     // Sample Ghost Replay Frames
     if (isTimerStarted && !isPaused && !isCompleted) {
-      _ghostSampleTimer += dt;
+      _ghostSampleTimer += stepDt;
       if (_ghostSampleTimer >= GhostReplayComponent.sampleInterval) {
         _ghostSampleTimer = 0.0;
-        _recordedFrames.add(
-          GhostFrame(
-            x: p.position.x,
-            y: p.position.y,
-            isSolar: p.kinematics.isSolar,
-            squishX: p.squishX,
-            squishY: p.squishY,
-          ),
-        );
+        if (_recordedFrames.length < _maxGhostFrames) {
+          _recordedFrames.add(
+            GhostFrame(
+              x: p.position.x,
+              y: p.position.y,
+              isSolar: p.kinematics.isSolar,
+              squishX: p.squishX,
+              squishY: p.squishY,
+            ),
+          );
+        }
       }
     }
 
@@ -448,7 +488,7 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
       MilestoneService.instance.triggerUnlock('slingshot_master');
     }
     if (p.kinematics.isGrounded && p.kinematics.phase is VoidPhase) {
-      ceilingDriftSeconds += dt;
+      ceilingDriftSeconds += stepDt;
       if (ceilingDriftSeconds >= 5.0) {
         MilestoneService.instance.triggerUnlock('ceiling_drifter');
       }
@@ -469,8 +509,10 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
       if (playerRect.overlaps(beacon.toRect())) {
         if (beacon.trigger()) {
           player.kinematics.triggerShift();
+          phaseNotifier.value = player.kinematics.phase;
           AudioEngine.instance.playShift();
           AudioEngine.instance.crossfadeToPhase(player.kinematics.phase);
+          HapticsService.instance.triggerShift();
         }
       }
     }
@@ -536,8 +578,9 @@ class PhaseDriftGame extends FlameGame with KeyboardEvents {
     KeyEvent event,
     Set<LogicalKeyboardKey> keysPressed,
   ) {
-    if (isCompleted) return KeyEventResult.ignored;
-    final handled = inputController.handleKeyEvent(event, keysPressed);
+    final controller = _inputController;
+    if (isCompleted || controller == null) return KeyEventResult.ignored;
+    final handled = controller.handleKeyEvent(event, keysPressed);
     return handled ? KeyEventResult.handled : KeyEventResult.ignored;
   }
 }

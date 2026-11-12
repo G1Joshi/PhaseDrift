@@ -32,6 +32,7 @@ class PlayerComponent extends PositionComponent
   double squishX = 1.0;
   double squishY = 1.0;
   final List<Vector2> _ghostTrail = [];
+  final List<Rect> _obstaclesBuffer = [];
   double _wallSparkTimer = 0.0;
   double _runDustTimer = 0.0;
 
@@ -54,7 +55,8 @@ class PlayerComponent extends PositionComponent
     final wasGrounded = kinematics.isGrounded;
     final preVy = kinematics.vy;
 
-    final obstacles = <Rect>[];
+    final obstacles = _obstaclesBuffer;
+    obstacles.clear();
     for (final block in game.world.children.query<UniversalBlock>()) {
       obstacles.add(block.toRect());
     }

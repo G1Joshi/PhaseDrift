@@ -38,7 +38,7 @@ class GhostReplayComponent extends PositionComponent
     super.onLoad();
     _labelPaint = TextPaint(
       style: const TextStyle(
-        fontFamily: 'monospace',
+        fontFamily: 'JetBrainsMono',
         fontSize: 6.5,
         fontWeight: FontWeight.w700,
         color: AppColors.onSurfaceVariant,

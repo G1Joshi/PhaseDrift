@@ -24,31 +24,36 @@ class ChamberDirective extends PositionComponent {
 
   double _pulseTimer = 0.0;
 
-  late final TextPaint _titlePaint;
-  late final TextPaint _subtitlePaint;
+  static final Paint _bgPaint = Paint()
+    ..color = AppColors.obsidianVoid.withValues(alpha: 0.65)
+    ..style = PaintingStyle.fill;
+  final Paint _fillPaint = Paint()..style = PaintingStyle.fill;
+  final Paint _borderPaint = Paint()
+    ..strokeWidth = 0.75
+    ..style = PaintingStyle.stroke;
+  late final RRect _rrect = RRect.fromRectAndRadius(
+    Rect.fromLTWH(0, 0, size.x, size.y),
+    const Radius.circular(2.5),
+  );
 
-  @override
-  Future<void> onLoad() async {
-    super.onLoad();
-    _titlePaint = TextPaint(
-      style: const TextStyle(
-        fontFamily: 'monospace',
-        fontSize: 6.5,
-        fontWeight: FontWeight.w800,
-        letterSpacing: 0.8,
-        color: AppColors.onSurface,
-      ),
-    );
-    _subtitlePaint = TextPaint(
-      style: TextStyle(
-        fontFamily: 'monospace',
-        fontSize: 4.8,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.5,
-        color: accentColor.withValues(alpha: 0.85),
-      ),
-    );
-  }
+  late final TextPaint _titlePaint = TextPaint(
+    style: const TextStyle(
+      fontFamily: 'JetBrainsMono',
+      fontSize: 6.5,
+      fontWeight: FontWeight.w800,
+      letterSpacing: 0.8,
+      color: AppColors.onSurface,
+    ),
+  );
+  late final TextPaint _subtitlePaint = TextPaint(
+    style: TextStyle(
+      fontFamily: 'JetBrainsMono',
+      fontSize: 4.8,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.5,
+      color: accentColor.withValues(alpha: 0.85),
+    ),
+  );
 
   @override
   void update(double dt) {
@@ -64,51 +69,38 @@ class ChamberDirective extends PositionComponent {
     final bgAlpha = 0.08 + 0.04 * pulse;
     final borderAlpha = 0.35 + 0.25 * pulse;
 
-    final rrect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0, 0, size.x, size.y),
-      const Radius.circular(2.5),
-    );
-
     // Subtle dark translucent background
-    final bgPaint = Paint()
-      ..color = AppColors.obsidianVoid.withValues(alpha: 0.65)
-      ..style = PaintingStyle.fill;
-    canvas.drawRRect(rrect, bgPaint);
+    canvas.drawRRect(_rrect, _bgPaint);
 
-    final fillPaint = Paint()
-      ..color = accentColor.withValues(alpha: bgAlpha)
-      ..style = PaintingStyle.fill;
-    canvas.drawRRect(rrect, fillPaint);
+    _fillPaint.color = accentColor.withValues(alpha: bgAlpha);
+    canvas.drawRRect(_rrect, _fillPaint);
 
     // Tactical corner bracket accents
-    final borderPaint = Paint()
-      ..color = accentColor.withValues(alpha: borderAlpha)
-      ..strokeWidth = 0.75
-      ..style = PaintingStyle.stroke;
+    _borderPaint.color = accentColor.withValues(alpha: borderAlpha);
 
     const bLen = 5.0;
     // Top-left
-    canvas.drawLine(Offset.zero, const Offset(bLen, 0), borderPaint);
-    canvas.drawLine(Offset.zero, const Offset(0, bLen), borderPaint);
+    canvas.drawLine(Offset.zero, const Offset(bLen, 0), _borderPaint);
+    canvas.drawLine(Offset.zero, const Offset(0, bLen), _borderPaint);
 
     // Top-right
-    canvas.drawLine(Offset(size.x, 0), Offset(size.x - bLen, 0), borderPaint);
-    canvas.drawLine(Offset(size.x, 0), Offset(size.x, bLen), borderPaint);
+    canvas.drawLine(Offset(size.x, 0), Offset(size.x - bLen, 0), _borderPaint);
+    canvas.drawLine(Offset(size.x, 0), Offset(size.x, bLen), _borderPaint);
 
     // Bottom-left
-    canvas.drawLine(Offset(0, size.y), Offset(bLen, size.y), borderPaint);
-    canvas.drawLine(Offset(0, size.y), Offset(0, size.y - bLen), borderPaint);
+    canvas.drawLine(Offset(0, size.y), Offset(bLen, size.y), _borderPaint);
+    canvas.drawLine(Offset(0, size.y), Offset(0, size.y - bLen), _borderPaint);
 
     // Bottom-right
     canvas.drawLine(
       Offset(size.x, size.y),
       Offset(size.x - bLen, size.y),
-      borderPaint,
+      _borderPaint,
     );
     canvas.drawLine(
       Offset(size.x, size.y),
       Offset(size.x, size.y - bLen),
-      borderPaint,
+      _borderPaint,
     );
 
     // Draw Title

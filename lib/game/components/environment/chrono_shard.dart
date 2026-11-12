@@ -16,6 +16,18 @@ class ChronoShard extends PositionComponent {
   bool isCollected = false;
   double _elapsedTime = 0.0;
 
+  static final Paint _fillPaint = Paint()..color = AppColors.chronoShard;
+  static final Paint _glowPaint = Paint()
+    ..color = AppColors.chronoShard.withValues(alpha: 0.5)
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0);
+
+  late final Path _diamondPath = Path()
+    ..moveTo(size.x / 2, 0)
+    ..lineTo(size.x, size.y / 2)
+    ..lineTo(size.x / 2, size.y)
+    ..lineTo(0, size.y / 2)
+    ..close();
+
   bool collect() {
     if (isCollected) return false;
     isCollected = true;
@@ -38,19 +50,7 @@ class ChronoShard extends PositionComponent {
     if (isCollected) return;
     super.render(canvas);
 
-    final path = Path()
-      ..moveTo(size.x / 2, 0)
-      ..lineTo(size.x, size.y / 2)
-      ..lineTo(size.x / 2, size.y)
-      ..lineTo(0, size.y / 2)
-      ..close();
-
-    final fillPaint = Paint()..color = AppColors.chronoShard;
-    final glowPaint = Paint()
-      ..color = AppColors.chronoShard.withValues(alpha: 0.5)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0);
-
-    canvas.drawPath(path, glowPaint);
-    canvas.drawPath(path, fillPaint);
+    canvas.drawPath(_diamondPath, _glowPaint);
+    canvas.drawPath(_diamondPath, _fillPaint);
   }
 }

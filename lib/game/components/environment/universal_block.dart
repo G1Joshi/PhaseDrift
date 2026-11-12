@@ -7,6 +7,17 @@ class UniversalBlock extends PositionComponent {
   UniversalBlock({required Vector2 position, required Vector2 size})
     : super(position: position, size: size, anchor: Anchor.topLeft);
 
+  static final Paint _fillPaint = Paint()..color = AppColors.canvasDark;
+  static final Paint _rimPaint = Paint()
+    ..color = AppColors.structuralSeam
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.0;
+  static final Paint _treadPaint = Paint()
+    ..color = AppColors.onSurface.withValues(alpha: 0.25)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.5;
+  static final Paint _accentPaint = Paint()..color = AppColors.universalBorder;
+
   @override
   void render(Canvas canvas) {
     super.render(canvas);
@@ -14,28 +25,18 @@ class UniversalBlock extends PositionComponent {
     final rect = Rect.fromLTWH(0, 0, size.x, size.y);
 
     // 1. Dark Structural Core
-    final fillPaint = Paint()..color = AppColors.canvasDark;
-    canvas.drawRect(rect, fillPaint);
+    canvas.drawRect(rect, _fillPaint);
 
     // 2. High-Contrast Rim & Bevel
-    final rimPaint = Paint()
-      ..color = AppColors.structuralSeam
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
-    canvas.drawRect(rect, rimPaint);
+    canvas.drawRect(rect, _rimPaint);
 
     // 3. Top Glowing Edge Highlight (Platform Tread)
-    final treadPaint = Paint()
-      ..color = AppColors.onSurface.withValues(alpha: 0.25)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    canvas.drawLine(const Offset(0, 0.75), Offset(size.x, 0.75), treadPaint);
+    canvas.drawLine(const Offset(0, 0.75), Offset(size.x, 0.75), _treadPaint);
 
     // 4. Tactical Corner Accents if large enough
     if (size.x >= 32.0 && size.y >= 16.0) {
-      final accentPaint = Paint()..color = AppColors.universalBorder;
-      canvas.drawRect(const Rect.fromLTWH(2, 2, 2, 2), accentPaint);
-      canvas.drawRect(Rect.fromLTWH(size.x - 4, 2, 2, 2), accentPaint);
+      canvas.drawRect(const Rect.fromLTWH(2, 2, 2, 2), _accentPaint);
+      canvas.drawRect(Rect.fromLTWH(size.x - 4, 2, 2, 2), _accentPaint);
     }
   }
 }
