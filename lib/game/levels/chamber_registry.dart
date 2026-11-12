@@ -35,6 +35,9 @@ abstract final class ChamberRegistry {
     int currentChamberId, {
     bool allowEndless = false,
   }) {
+    if (currentChamberId == 999) {
+      return getRandomChamber();
+    }
     final nextId = currentChamberId + 1;
     if (nextId <= totalChambers) {
       return getChamber(nextId);

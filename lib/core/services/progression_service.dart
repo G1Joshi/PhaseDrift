@@ -62,24 +62,30 @@ class ProgressionService {
     int deathsCount = 0,
   }) async {
     await _ensureInitialized();
-    final currentRecord = _persistence.getChamberRecord(chamberId);
+    final isRandomQuantum = chamberId == 999;
+    final currentRecord = isRandomQuantum
+        ? ChamberRecord.initial(chamberId, isUnlocked: true)
+        : _persistence.getChamberRecord(chamberId);
     final updated = currentRecord.recordRun(
       completionTimeMs: completionTimeMs,
       newShardsMask: shardsMask,
     );
-    await _persistence.saveChamberRecord(updated);
 
-    // Auto-unlock next chamber
-    final nextId = chamberId + 1;
-    final nextRecord = _persistence.getChamberRecord(nextId);
-    if (!nextRecord.isUnlocked) {
-      final unlockedNext = ChamberRecord(
-        chamberId: nextId,
-        bestTimeMs: nextRecord.bestTimeMs,
-        collectedShardsMask: nextRecord.collectedShardsMask,
-        isUnlocked: true,
-      );
-      await _persistence.saveChamberRecord(unlockedNext);
+    if (!isRandomQuantum) {
+      await _persistence.saveChamberRecord(updated);
+
+      // Auto-unlock next chamber
+      final nextId = chamberId + 1;
+      final nextRecord = _persistence.getChamberRecord(nextId);
+      if (!nextRecord.isUnlocked) {
+        final unlockedNext = ChamberRecord(
+          chamberId: nextId,
+          bestTimeMs: nextRecord.bestTimeMs,
+          collectedShardsMask: nextRecord.collectedShardsMask,
+          isUnlocked: true,
+        );
+        await _persistence.saveChamberRecord(unlockedNext);
+      }
     }
 
     // Update global player stats

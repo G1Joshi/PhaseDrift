@@ -1,15 +1,10 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:phasedrift/core/domain/domain.dart';
 import 'package:phasedrift/ui/ui.dart';
 
 void main() {
-  setUpAll(() {
-    GoogleFonts.config.allowRuntimeFetching = false;
-  });
-
   group('SplitStopwatch Formatting Logic', () {
     test('formatTime formats zero and standard elapsed milliseconds', () {
       expect(SplitStopwatchView.formatTime(0), equals('00:00.000'));

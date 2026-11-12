@@ -15,6 +15,21 @@ class ExitPortal extends PositionComponent {
 
   double _pulseTime = 0.0;
 
+  static final Paint _backPaint = Paint()..color = AppColors.deepCharcoal;
+  static final Paint _solarArch = Paint()
+    ..color = AppColors.solarAmber
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2.0;
+  final Paint _voidArch = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.5;
+
+  late final RRect _outerRRect = RRect.fromRectAndRadius(
+    Rect.fromLTWH(0, 0, size.x, size.y),
+    Radius.circular(size.x / 2),
+  );
+  late final RRect _innerRRect = _outerRRect.deflate(3.0);
+
   @override
   void update(double dt) {
     super.update(dt);
@@ -25,23 +40,11 @@ class ExitPortal extends PositionComponent {
   void render(Canvas canvas) {
     super.render(canvas);
 
-    final rect = Rect.fromLTWH(0, 0, size.x, size.y);
-    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(size.x / 2));
-
-    final backPaint = Paint()..color = AppColors.deepCharcoal;
-    final solarArch = Paint()
-      ..color = AppColors.solarAmber
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-
     final pulseAlpha = 0.6 + (math.sin(_pulseTime) * 0.3);
-    final voidArch = Paint()
-      ..color = AppColors.voidCyan.withValues(alpha: pulseAlpha)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
+    _voidArch.color = AppColors.voidCyan.withValues(alpha: pulseAlpha);
 
-    canvas.drawRRect(rrect, backPaint);
-    canvas.drawRRect(rrect, solarArch);
-    canvas.drawRRect(rrect.deflate(3.0), voidArch);
+    canvas.drawRRect(_outerRRect, _backPaint);
+    canvas.drawRRect(_outerRRect, _solarArch);
+    canvas.drawRRect(_innerRRect, _voidArch);
   }
 }

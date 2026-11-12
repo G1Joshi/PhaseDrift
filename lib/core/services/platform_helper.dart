@@ -8,7 +8,10 @@ abstract final class AppPlatform {
           defaultTargetPlatform == TargetPlatform.iOS);
 
   static bool isTouchDevice(BuildContext context) {
-    if (isMobile) return true;
+    if (defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS) {
+      return true;
+    }
     final size = MediaQuery.sizeOf(context);
     return size.height <= 500.0;
   }

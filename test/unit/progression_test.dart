@@ -162,6 +162,22 @@ void main() {
         expect(await progression.isChamberUnlocked(2), isTrue);
       },
     );
+
+    test('completing random Quantum Drift chamber unlocks milestone without fake 1000 record', () async {
+      final progression = ProgressionService();
+
+      await progression.completeChamber(
+        chamberId: 999,
+        completionTimeMs: 11000,
+        shardsMask: 7,
+      );
+
+      expect(
+        await MilestoneService.instance.isUnlocked('endless_diver'),
+        isTrue,
+      );
+      expect(await progression.isChamberUnlocked(1000), isFalse);
+    });
   });
 
   group('PersistenceService Settings & Telemetry State', () {

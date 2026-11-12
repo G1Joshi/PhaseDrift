@@ -10,9 +10,29 @@ class PhaseBlock extends PositionComponent {
     required Vector2 position,
     required Vector2 size,
     required this.phaseType,
-  }) : super(position: position, size: size, anchor: Anchor.topLeft);
+  }) : super(position: position, size: size, anchor: Anchor.topLeft) {
+    final c = _color;
+    _fillPaint = Paint()..color = c.withValues(alpha: 0.35);
+    _borderPaint = Paint()
+      ..color = c
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    _innerPaint = Paint()
+      ..color = c.withValues(alpha: 0.60)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    _ghostBorderPaint = Paint()
+      ..color = c.withValues(alpha: 0.20)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+  }
 
   final PhaseType phaseType;
+  late final Paint _fillPaint;
+  late final Paint _borderPaint;
+  late final Paint _innerPaint;
+  late final Paint _ghostBorderPaint;
+  PhaseDriftGame? _cachedGame;
 
   bool isSolid(GamePhase currentPhase) =>
       currentPhase.isPlatformSolid(phaseType);
@@ -21,11 +41,18 @@ class PhaseBlock extends PositionComponent {
       phaseType == PhaseType.solar ? AppColors.solarAmber : AppColors.voidCyan;
 
   @override
+  void onMount() {
+    super.onMount();
+    final g = findGame();
+    _cachedGame = g is PhaseDriftGame ? g : null;
+  }
+
+  @override
   void render(Canvas canvas) {
     super.render(canvas);
 
-    final parentGame = findGame();
-    final currentPhase = parentGame is PhaseDriftGame && parentGame.isLoaded
+    final parentGame = _cachedGame;
+    final currentPhase = parentGame != null && parentGame.isLoaded
         ? parentGame.player.kinematics.phase
         : (phaseType == PhaseType.solar
               ? const SolarPhase()
@@ -34,30 +61,15 @@ class PhaseBlock extends PositionComponent {
     final rect = Rect.fromLTWH(0, 0, size.x, size.y);
 
     if (solid) {
-      final fillPaint = Paint()..color = _color.withValues(alpha: 0.35);
-      final borderPaint = Paint()
-        ..color = _color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5;
-
-      canvas.drawRect(rect, fillPaint);
-      canvas.drawRect(rect, borderPaint);
-
-      final innerPaint = Paint()
-        ..color = _color.withValues(alpha: 0.60)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.0;
+      canvas.drawRect(rect, _fillPaint);
+      canvas.drawRect(rect, _borderPaint);
       canvas.drawLine(
         Offset(4.0, size.y / 2),
         Offset(size.x - 4.0, size.y / 2),
-        innerPaint,
+        _innerPaint,
       );
     } else {
-      final ghostBorder = Paint()
-        ..color = _color.withValues(alpha: 0.20)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.8;
-      canvas.drawRect(rect, ghostBorder);
+      canvas.drawRect(rect, _ghostBorderPaint);
     }
   }
 }

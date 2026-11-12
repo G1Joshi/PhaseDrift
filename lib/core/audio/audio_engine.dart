@@ -14,14 +14,18 @@ class AudioEngine {
     AudioPlayer? sfxPlayer,
   }) : _solarPlayer = solarPlayer ?? AudioPlayer(),
        _voidPlayer = voidPlayer ?? AudioPlayer(),
-       _sfxPlayer = sfxPlayer ?? AudioPlayer();
+       _sfxPool = sfxPlayer != null
+           ? [sfxPlayer]
+           : List<AudioPlayer>.generate(_sfxPoolSize, (_) => AudioPlayer());
 
+  static const int _sfxPoolSize = 6;
   static AudioEngine? _instance;
   static AudioEngine get instance => _instance ??= AudioEngine();
 
   final AudioPlayer _solarPlayer;
   final AudioPlayer _voidPlayer;
-  final AudioPlayer _sfxPlayer;
+  final List<AudioPlayer> _sfxPool;
+  int _sfxPoolIndex = 0;
 
   double _masterVolume = AudioConstants.defaultMasterVolume;
   double _musicVolume = AudioConstants.defaultMusicVolume;
@@ -30,6 +34,7 @@ class AudioEngine {
 
   bool _isInitialized = false;
   bool _isPlaying = false;
+  Future<void>? _initFuture;
   GamePhase _currentPhase = const SolarPhase();
   Timer? _crossfadeTimer;
 
@@ -71,12 +76,34 @@ class AudioEngine {
     }
   }
 
-  Future<void> initialize() async {
-    if (_isInitialized) return;
+  Future<void> initialize() {
+    if (_isInitialized) return Future.value();
+    return _initFuture ??= _performInitialize();
+  }
+
+  Future<void> _performInitialize() async {
     try {
+      if (!kIsWeb) {
+        final gameAudioContext = AudioContextConfig(
+          focus: AudioContextConfigFocus.mixWithOthers,
+        ).build();
+        await AudioPlayer.global.setAudioContext(gameAudioContext);
+
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          await _solarPlayer.setAudioContext(gameAudioContext);
+          await _voidPlayer.setAudioContext(gameAudioContext);
+          for (final player in _sfxPool) {
+            await player.setAudioContext(gameAudioContext);
+            await player.setPlayerMode(PlayerMode.lowLatency);
+          }
+        }
+      }
+
       await _solarPlayer.setReleaseMode(ReleaseMode.loop);
       await _voidPlayer.setReleaseMode(ReleaseMode.loop);
-      await _sfxPlayer.setReleaseMode(ReleaseMode.stop);
+      for (final player in _sfxPool) {
+        await player.setReleaseMode(ReleaseMode.stop);
+      }
 
       await _solarPlayer.setSource(AssetSource(AudioConstants.stemSolar));
       await _voidPlayer.setSource(AssetSource(AudioConstants.stemVoid));
@@ -86,12 +113,13 @@ class AudioEngine {
       debugPrint(
         'AudioEngine: Audio hardware unavailable in current runtime: $e',
       );
+    } finally {
+      _initFuture = null;
     }
   }
 
   Future<void> startMusic() async {
     if (!_isInitialized) await initialize();
-    _isPlaying = true;
 
     final targetIsSolar = _currentPhase is SolarPhase;
     final solarVol = targetIsSolar ? effectiveMusicVolume : 0.0;
@@ -103,7 +131,9 @@ class AudioEngine {
 
       await _solarPlayer.resume();
       await _voidPlayer.resume();
+      _isPlaying = true;
     } catch (e) {
+      _isPlaying = false;
       debugPrint('AudioEngine.startMusic error: $e');
     }
   }
@@ -174,10 +204,12 @@ class AudioEngine {
 
   Future<void> playSfx(String assetPath) async {
     if (_isMuted || effectiveSfxVolume <= 0.0) return;
+    final player = _sfxPool[_sfxPoolIndex];
+    _sfxPoolIndex = (_sfxPoolIndex + 1) % _sfxPool.length;
     try {
-      await _sfxPlayer.setVolume(effectiveSfxVolume);
-      await _sfxPlayer.play(AssetSource(assetPath));
+      await player.play(AssetSource(assetPath), volume: effectiveSfxVolume);
     } catch (e) {
+      if (e.toString().contains('AbortError')) return;
       debugPrint('AudioEngine.playSfx error: $e');
     }
   }
@@ -219,9 +251,15 @@ class AudioEngine {
 
   void dispose() {
     _crossfadeTimer?.cancel();
+    _crossfadeTimer = null;
+    _initFuture = null;
+    _isInitialized = false;
+    _isPlaying = false;
     _solarPlayer.dispose();
     _voidPlayer.dispose();
-    _sfxPlayer.dispose();
+    for (final player in _sfxPool) {
+      player.dispose();
+    }
     if (_instance == this) {
       _instance = null;
     }

@@ -26,6 +26,27 @@ class MovingPlatform extends PositionComponent {
   bool _forward = true;
   Vector2 velocity = Vector2.zero();
 
+  Color get _baseColor => phaseType == null
+      ? AppColors.universalPlatform
+      : (phaseType == PhaseType.solar
+            ? AppColors.solarGold
+            : AppColors.voidCyan);
+
+  late final RRect _rrect = RRect.fromRectAndRadius(
+    Rect.fromLTWH(0, 0, size.x, size.y),
+    const Radius.circular(3.0),
+  );
+  late final Paint _fillPaint = Paint()
+    ..color = _baseColor.withValues(alpha: 0.85)
+    ..style = PaintingStyle.fill;
+  late final Paint _borderPaint = Paint()
+    ..color = _baseColor
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.5;
+  static final Paint _chevronPaint = Paint()
+    ..color = AppColors.obsidianVoid.withValues(alpha: 0.45)
+    ..strokeWidth = 2.0;
+
   bool isSolid(GamePhase currentPhase) {
     if (phaseType == null) return true;
     return currentPhase.isPlatformSolid(phaseType!);
@@ -40,7 +61,8 @@ class MovingPlatform extends PositionComponent {
     final travelTime = distance / speed;
     final delta = dt / travelTime;
 
-    final oldPos = position.clone();
+    final oldX = position.x;
+    final oldY = position.y;
 
     if (_forward) {
       _progress += delta;
@@ -57,47 +79,28 @@ class MovingPlatform extends PositionComponent {
     }
 
     final smoothT = (1.0 - math.cos(_progress * math.pi)) / 2.0;
-    position.setFrom(
-      _startPosition + (_endPosition - _startPosition) * smoothT,
+    position.setValues(
+      _startPosition.x + (_endPosition.x - _startPosition.x) * smoothT,
+      _startPosition.y + (_endPosition.y - _startPosition.y) * smoothT,
     );
 
     if (dt > 0) {
-      velocity = (position - oldPos) / dt;
+      velocity.setValues((position.x - oldX) / dt, (position.y - oldY) / dt);
     }
   }
 
   @override
   void render(Canvas canvas) {
     super.render(canvas);
-    final rect = Rect.fromLTWH(0, 0, size.x, size.y);
-    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(3.0));
 
-    final baseColor = phaseType == null
-        ? AppColors.universalPlatform
-        : (phaseType == PhaseType.solar
-              ? AppColors.solarGold
-              : AppColors.voidCyan);
+    canvas.drawRRect(_rrect, _fillPaint);
+    canvas.drawRRect(_rrect, _borderPaint);
 
-    final fillPaint = Paint()
-      ..color = baseColor.withValues(alpha: 0.85)
-      ..style = PaintingStyle.fill;
-
-    final borderPaint = Paint()
-      ..color = baseColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-
-    canvas.drawRRect(rrect, fillPaint);
-    canvas.drawRRect(rrect, borderPaint);
-
-    final chevronPaint = Paint()
-      ..color = AppColors.obsidianVoid.withValues(alpha: 0.45)
-      ..strokeWidth = 2.0;
     for (double x = 8.0; x < size.x - 4.0; x += 12.0) {
       canvas.drawLine(
         Offset(x, 3.0),
         Offset(x + 4.0, size.y - 3.0),
-        chevronPaint,
+        _chevronPaint,
       );
     }
   }

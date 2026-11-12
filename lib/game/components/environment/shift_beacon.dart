@@ -16,6 +16,22 @@ class ShiftBeacon extends PositionComponent {
   double _cooldown = 0.0;
   double _pulseTime = 0.0;
 
+  final Paint _amberPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.5;
+  final Paint _cyanPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.5;
+  static final Paint _centerPaint = Paint()..color = AppColors.apexWhite;
+
+  late final Rect _arcRect = Rect.fromLTWH(0, 0, size.x, size.y);
+  late final Path _centerPath = Path()
+    ..moveTo(size.x / 2, size.y / 2 - 4.0)
+    ..lineTo(size.x / 2 + 4.0, size.y / 2)
+    ..lineTo(size.x / 2, size.y / 2 + 4.0)
+    ..lineTo(size.x / 2 - 4.0, size.y / 2)
+    ..close();
+
   bool trigger() {
     if (_cooldown > 0.0) return false;
     _cooldown = 0.4;
@@ -37,31 +53,14 @@ class ShiftBeacon extends PositionComponent {
     super.render(canvas);
 
     final pulse = 0.7 + 0.3 * math.sin(_pulseTime * 5.0);
-    final amberPaint = Paint()
-      ..color = AppColors.solarAmber.withValues(alpha: pulse)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-
-    final cyanPaint = Paint()
-      ..color = AppColors.voidCyan.withValues(alpha: pulse)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-
-    final centerPaint = Paint()..color = AppColors.apexWhite;
+    _amberPaint.color = AppColors.solarAmber.withValues(alpha: pulse);
+    _cyanPaint.color = AppColors.voidCyan.withValues(alpha: pulse);
 
     // Render outer dual-polarity brackets
-    final rect = Rect.fromLTWH(0, 0, size.x, size.y);
-    canvas.drawArc(rect, -math.pi / 2, math.pi, false, amberPaint);
-    canvas.drawArc(rect, math.pi / 2, math.pi, false, cyanPaint);
+    canvas.drawArc(_arcRect, -math.pi / 2, math.pi, false, _amberPaint);
+    canvas.drawArc(_arcRect, math.pi / 2, math.pi, false, _cyanPaint);
 
     // Center diamond glint
-    final centerPath = Path()
-      ..moveTo(size.x / 2, size.y / 2 - 4.0)
-      ..lineTo(size.x / 2 + 4.0, size.y / 2)
-      ..lineTo(size.x / 2, size.y / 2 + 4.0)
-      ..lineTo(size.x / 2 - 4.0, size.y / 2)
-      ..close();
-
-    canvas.drawPath(centerPath, centerPaint);
+    canvas.drawPath(_centerPath, _centerPaint);
   }
 }

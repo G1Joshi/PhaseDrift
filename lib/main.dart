@@ -94,9 +94,6 @@ class _MainNavigationHarnessState extends State<MainNavigationHarness>
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.hidden) {
       AudioEngine.instance.pauseMusic();
-    } else if (state == AppLifecycleState.resumed &&
-        _currentRoute == AppRoute.gameplay) {
-      AudioEngine.instance.resumeMusic();
     }
   }
 
@@ -109,6 +106,28 @@ class _MainNavigationHarnessState extends State<MainNavigationHarness>
       _activeChamber = chamber;
       _currentRoute = AppRoute.gameplay;
     });
+  }
+
+  void _openSettingsFromPause() {
+    Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        transitionDuration: const Duration(milliseconds: 180),
+        reverseTransitionDuration: const Duration(milliseconds: 180),
+        pageBuilder: (ctx, _, _) => SettingsScreen(
+          reduceMotion: _reduceMotion,
+          onReduceMotionChanged: (val) => setState(() => _reduceMotion = val),
+          touchOpacity: _touchOpacity,
+          onTouchOpacityChanged: (val) => setState(() => _touchOpacity = val),
+          touchScale: _touchScale,
+          onTouchScaleChanged: (val) => setState(() => _touchScale = val),
+          southpaw: _southpaw,
+          onSouthpawChanged: (val) => setState(() => _southpaw = val),
+          onBack: () => Navigator.of(ctx).pop(),
+        ),
+        transitionsBuilder: (_, animation, _, child) =>
+            FadeTransition(opacity: animation, child: child),
+      ),
+    );
   }
 
   @override
@@ -125,20 +144,34 @@ class _MainNavigationHarnessState extends State<MainNavigationHarness>
             onOpenChamberSelect: () => _navigateTo(AppRoute.chamberSelect),
             onOpenSettings: () => _navigateTo(AppRoute.settings),
           ),
-          AppRoute.chamberSelect => ChamberSelectScreen(
-            onSelectChamber: _startChamber,
-            onBack: () => _navigateTo(AppRoute.title),
+          AppRoute.chamberSelect => PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop) _navigateTo(AppRoute.title);
+            },
+            child: ChamberSelectScreen(
+              onSelectChamber: _startChamber,
+              onBack: () => _navigateTo(AppRoute.title),
+            ),
           ),
-          AppRoute.settings => SettingsScreen(
-            reduceMotion: _reduceMotion,
-            onReduceMotionChanged: (val) => setState(() => _reduceMotion = val),
-            touchOpacity: _touchOpacity,
-            onTouchOpacityChanged: (val) => setState(() => _touchOpacity = val),
-            touchScale: _touchScale,
-            onTouchScaleChanged: (val) => setState(() => _touchScale = val),
-            southpaw: _southpaw,
-            onSouthpawChanged: (val) => setState(() => _southpaw = val),
-            onBack: () => _navigateTo(AppRoute.title),
+          AppRoute.settings => PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop) _navigateTo(AppRoute.title);
+            },
+            child: SettingsScreen(
+              reduceMotion: _reduceMotion,
+              onReduceMotionChanged: (val) =>
+                  setState(() => _reduceMotion = val),
+              touchOpacity: _touchOpacity,
+              onTouchOpacityChanged: (val) =>
+                  setState(() => _touchOpacity = val),
+              touchScale: _touchScale,
+              onTouchScaleChanged: (val) => setState(() => _touchScale = val),
+              southpaw: _southpaw,
+              onSouthpawChanged: (val) => setState(() => _southpaw = val),
+              onBack: () => _navigateTo(AppRoute.title),
+            ),
           ),
           AppRoute.gameplay => GameSessionView(
             chamber: _activeChamber,
@@ -146,7 +179,7 @@ class _MainNavigationHarnessState extends State<MainNavigationHarness>
             touchOpacity: _touchOpacity,
             touchScale: _touchScale,
             southpaw: _southpaw,
-            onOpenSettings: () => _navigateTo(AppRoute.settings),
+            onOpenSettings: _openSettingsFromPause,
             onExitToMenu: () => _navigateTo(AppRoute.chamberSelect),
             onLoadChamber: _startChamber,
           ),
@@ -183,24 +216,51 @@ class GameSessionView extends StatefulWidget {
 }
 
 class _GameSessionViewState extends State<GameSessionView>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late PhaseDriftGame _game;
   late final Ticker _ticker;
   final ValueNotifier<int> _hudTicker = ValueNotifier<int>(0);
+  final ValueNotifier<bool> _gameplayReady = ValueNotifier<bool>(false);
   final FocusNode _gameFocusNode = FocusNode();
   int? _personalBestMs;
+  bool _lastHudActive = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initGame();
     _loadPersonalBest();
     _ticker = createTicker((_) {
-      _hudTicker.value++;
+      final isActive = _game.isLoaded && !_game.isPaused && !_game.isCompleted;
+      if (_gameplayReady.value != isActive) {
+        _gameplayReady.value = isActive;
+      }
+      if (isActive || _lastHudActive) {
+        _lastHudActive = isActive;
+        _hudTicker.value++;
+      }
     })..start();
+    _restoreGameFocus();
+  }
+
+  void _restoreGameFocus() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _gameFocusNode.requestFocus();
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if ((state == AppLifecycleState.paused ||
+            state == AppLifecycleState.inactive ||
+            state == AppLifecycleState.hidden) &&
+        _game.isLoaded &&
+        !_game.isPaused &&
+        !_game.isCompleted) {
+      _game.pauseGame();
+      if (mounted) setState(() {});
+    }
   }
 
   void _loadPersonalBest() async {
@@ -215,25 +275,36 @@ class _GameSessionViewState extends State<GameSessionView>
   }
 
   void _initGame() {
+    _gameplayReady.value = false;
+    _lastHudActive = true;
     _game = PhaseDriftGame(chamber: widget.chamber);
     _game.setReduceMotion(widget.reduceMotion);
+    AudioEngine.instance.crossfadeToPhase(const SolarPhase());
     AudioEngine.instance.startMusic();
   }
 
   @override
   void didUpdateWidget(covariant GameSessionView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.chamber.chamberId != widget.chamber.chamberId) {
+    final isNewRandomAnomaly =
+        widget.chamber.chamberId == 999 &&
+        !identical(oldWidget.chamber, widget.chamber);
+    if (oldWidget.chamber.chamberId != widget.chamber.chamberId ||
+        oldWidget.chamber.name != widget.chamber.name ||
+        isNewRandomAnomaly) {
       _initGame();
       _loadPersonalBest();
+      _restoreGameFocus();
     }
     _game.setReduceMotion(widget.reduceMotion);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     AudioEngine.instance.pauseMusic();
     _gameFocusNode.dispose();
+    _gameplayReady.dispose();
     _ticker.dispose();
     _hudTicker.dispose();
     super.dispose();
@@ -267,12 +338,18 @@ class _GameSessionViewState extends State<GameSessionView>
                 cursor: SystemMouseCursors.basic,
                 child: GestureDetector(
                   behavior: HitTestBehavior.translucent,
-                  onTap: () => _gameFocusNode.requestFocus(),
+                  onTap: () {
+                    if (!_game.isPaused && !_game.isCompleted) {
+                      _gameFocusNode.requestFocus();
+                    }
+                  },
                   child: Stack(
                     children: [
                       // 1. Flame Game Engine Viewport
                       GameWidget<PhaseDriftGame>(
-                        key: ValueKey('game_${widget.chamber.chamberId}'),
+                        key: ValueKey(
+                          'game_${widget.chamber.chamberId}_${widget.chamber.name}_${identityHashCode(widget.chamber)}',
+                        ),
                         game: _game,
                         focusNode: _gameFocusNode,
                         autofocus: true,
@@ -280,10 +357,12 @@ class _GameSessionViewState extends State<GameSessionView>
                           'PauseMenu': (context, game) => PauseMenu(
                             onResume: () {
                               game.resumeGame();
+                              _restoreGameFocus();
                               setState(() {});
                             },
                             onRestart: () {
                               game.restartChamber();
+                              _restoreGameFocus();
                               setState(() {});
                             },
                             onSettings: widget.onOpenSettings,
@@ -309,6 +388,8 @@ class _GameSessionViewState extends State<GameSessionView>
                               nextChamberTierColor: nextChamber?.tier.color,
                               onRetry: () {
                                 game.restartChamber();
+                                _loadPersonalBest();
+                                _restoreGameFocus();
                                 setState(() {});
                               },
                               onNextChamber: nextChamber != null
@@ -348,15 +429,12 @@ class _GameSessionViewState extends State<GameSessionView>
                       ),
 
                       // 3. Virtual Mobile / Touch D-pad
-                      ValueListenableBuilder<int>(
-                        valueListenable: _hudTicker,
-                        builder: (context, _, child) {
-                          if (!_game.isLoaded ||
-                              _game.isPaused ||
-                              _game.isCompleted) {
+                      ValueListenableBuilder<bool>(
+                        valueListenable: _gameplayReady,
+                        builder: (context, isReady, child) {
+                          if (!isReady || !AppPlatform.isTouchDevice(context)) {
                             return const SizedBox.shrink();
                           }
-                          final activePhase = _game.player.kinematics.phase;
                           return VirtualDpad(
                             phase: activePhase,
                             opacity: widget.touchOpacity,
@@ -380,7 +458,9 @@ class _GameSessionViewState extends State<GameSessionView>
 
                       // 5. Arcade Chamber Intro Telemetry Splash
                       ChamberIntroOverlay(
-                        key: ValueKey('intro_${widget.chamber.chamberId}'),
+                        key: ValueKey(
+                          'intro_${widget.chamber.chamberId}_${widget.chamber.name}_${identityHashCode(widget.chamber)}',
+                        ),
                         chamber: widget.chamber,
                       ),
 

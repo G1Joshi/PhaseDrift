@@ -45,6 +45,10 @@ class QuantumBackdrop extends PositionComponent
     ..strokeWidth = 1.0;
   final Paint _particlePaint = Paint();
 
+  double _cachedShaderLerp = -1.0;
+  double _cachedShaderW = -1.0;
+  double _cachedShaderH = -1.0;
+
   @override
   void update(double dt) {
     super.update(dt);
@@ -53,7 +57,15 @@ class QuantumBackdrop extends PositionComponent
     final targetLerp = game.isLoaded && !game.player.kinematics.isSolar
         ? 1.0
         : 0.0;
-    _phaseLerp += (targetLerp - _phaseLerp) * (dt * 6.0);
+    final diff = targetLerp - _phaseLerp;
+    if (diff.abs() < 0.002) {
+      _phaseLerp = targetLerp;
+    } else {
+      _phaseLerp = (_phaseLerp + diff * (dt * 6.0).clamp(0.0, 1.0)).clamp(
+        0.0,
+        1.0,
+      );
+    }
 
     for (final p in _particles) {
       p.y -= p.speed * dt * (targetLerp > 0.5 ? -1.0 : 1.0);
@@ -74,23 +86,30 @@ class QuantumBackdrop extends PositionComponent
     _bgPaint.color = currentBase;
     canvas.drawRect(rect, _bgPaint);
 
-    // 2. Active Reality Aurora Nebula
-    final auroraColor = Color.lerp(
-      AppColors.solarAmber.withValues(alpha: 0.12),
-      AppColors.voidCyan.withValues(alpha: 0.12),
-      _phaseLerp,
-    )!;
-    final auroraY = _phaseLerp < 0.5 ? size.y * 0.85 : size.y * 0.15;
-    _nebulaPaint.shader = Gradient.radial(
-      Offset(size.x * 0.5, auroraY),
-      size.x * 0.65,
-      [
-        auroraColor,
-        tier.color.withValues(alpha: 0.04),
-        const Color(0x00000000),
-      ],
-      [0.0, 0.5, 1.0],
-    );
+    // 2. Active Reality Aurora Nebula (recompute shader only when lerp or size changes)
+    if ((_phaseLerp - _cachedShaderLerp).abs() > 0.005 ||
+        _cachedShaderW != size.x ||
+        _cachedShaderH != size.y) {
+      _cachedShaderLerp = _phaseLerp;
+      _cachedShaderW = size.x;
+      _cachedShaderH = size.y;
+      final auroraColor = Color.lerp(
+        AppColors.solarAmber.withValues(alpha: 0.12),
+        AppColors.voidCyan.withValues(alpha: 0.12),
+        _phaseLerp,
+      )!;
+      final auroraY = size.y * (0.85 - 0.70 * _phaseLerp);
+      _nebulaPaint.shader = Gradient.radial(
+        Offset(size.x * 0.5, auroraY),
+        size.x * 0.65,
+        [
+          auroraColor,
+          tier.color.withValues(alpha: 0.04),
+          const Color(0x00000000),
+        ],
+        [0.0, 0.5, 1.0],
+      );
+    }
     canvas.drawRect(rect, _nebulaPaint);
 
     // 3. High-Contrast Dual-Reality Grid

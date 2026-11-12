@@ -16,6 +16,9 @@ class PhaseLadder extends PositionComponent {
   final PhaseType? phaseType;
   double _pulse = 0.0;
 
+  final Paint _railPaint = Paint()..strokeWidth = 2.0;
+  final Paint _rungPaint = Paint()..strokeWidth = 2.5;
+
   bool isActive(GamePhase currentPhase) {
     if (phaseType == null) return true;
     return currentPhase.isPlatformSolid(phaseType!);
@@ -40,28 +43,24 @@ class PhaseLadder extends PositionComponent {
     final glow = 0.6 + 0.4 * math.sin(_pulse);
 
     // Left and right vertical energy rails
-    final railPaint = Paint()
-      ..color = baseColor.withValues(alpha: 0.6 * glow)
-      ..strokeWidth = 2.0;
+    _railPaint.color = baseColor.withValues(alpha: 0.6 * glow);
 
-    canvas.drawLine(const Offset(2.0, 0), Offset(2.0, size.y), railPaint);
+    canvas.drawLine(const Offset(2.0, 0), Offset(2.0, size.y), _railPaint);
     canvas.drawLine(
       Offset(size.x - 2.0, 0),
       Offset(size.x - 2.0, size.y),
-      railPaint,
+      _railPaint,
     );
 
     // Horizontal luminous rungs
-    final rungPaint = Paint()
-      ..color = baseColor.withValues(alpha: 0.85 * glow)
-      ..strokeWidth = 2.5;
+    _rungPaint.color = baseColor.withValues(alpha: 0.85 * glow);
 
     for (double y = 8.0; y < size.y; y += 14.0) {
       final rungOffset = math.sin(_pulse + y * 0.1) * 0.5;
       canvas.drawLine(
         Offset(3.0, y + rungOffset),
         Offset(size.x - 3.0, y + rungOffset),
-        rungPaint,
+        _rungPaint,
       );
     }
   }

@@ -49,6 +49,12 @@ class _TitleScreenState extends State<TitleScreen> {
     }
   }
 
+  void _openMilestones() {
+    MilestonesDialog.show(context).then((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
+  }
+
   void _handleKeyEvent(KeyEvent event) {
     if (event is! KeyDownEvent) return;
     if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
@@ -63,7 +69,7 @@ class _TitleScreenState extends State<TitleScreen> {
         event.logicalKey == LogicalKeyboardKey.gameButtonStart) {
       _activateFocused();
     } else if (event.logicalKey == LogicalKeyboardKey.keyM) {
-      MilestonesDialog.show(context);
+      _openMilestones();
     }
   }
 
@@ -77,7 +83,7 @@ class _TitleScreenState extends State<TitleScreen> {
         widget.onOpenChamberSelect();
         break;
       case 2:
-        MilestonesDialog.show(context);
+        _openMilestones();
         break;
       case 3:
         widget.onOpenSettings();
@@ -224,7 +230,7 @@ class _TitleScreenState extends State<TitleScreen> {
         ),
         _buildMenuButton(
           label: 'TACTICAL MILESTONES',
-          onTap: () => MilestonesDialog.show(context),
+          onTap: _openMilestones,
           index: 2,
           compact: compact,
         ),
