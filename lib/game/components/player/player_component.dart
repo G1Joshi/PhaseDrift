@@ -263,6 +263,26 @@ class PlayerComponent extends PositionComponent
       }
     }
 
+    // Ultra High-Speed Vertical Slingshot Streaks (|vy| >= 200)
+    if (kinematics.vy.abs() >= 200.0 && !game.reduceMotion) {
+      final streakDir = kinematics.vy > 0 ? -1.0 : 1.0;
+      _streakPaint.color = phaseColor.withValues(alpha: 0.55);
+
+      final streakLength = (kinematics.vy.abs() / 18.0).clamp(14.0, 42.0);
+      final xOffsets = [size.x * 0.25, size.x * 0.5, size.x * 0.75];
+      final startY = kinematics.vy > 0 ? 0.0 : size.y;
+
+      for (var j = 0; j < xOffsets.length; j++) {
+        final streakX = xOffsets[j];
+        final len = streakLength * (0.8 + 0.2 * j);
+        canvas.drawLine(
+          Offset(streakX, startY),
+          Offset(streakX, startY + streakDir * len),
+          _streakPaint,
+        );
+      }
+    }
+
     canvas.drawRRect(rrect, _bodyPaint);
     canvas.drawRRect(rrect, _rimPaint);
 
