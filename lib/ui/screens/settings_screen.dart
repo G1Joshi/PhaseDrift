@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -94,13 +96,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+      padding: const EdgeInsets.only(top: 18.0, bottom: 8.0),
       child: Text(
         title,
         style: AppTypography.telemetryLabel.copyWith(
           color: AppColors.solarAmber,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w800,
           letterSpacing: 1.5,
+          fontSize: 11.5,
         ),
       ),
     );
@@ -114,12 +117,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4.0),
       padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+      constraints: const BoxConstraints(minHeight: 48.0),
       decoration: AppDecorations.hudModule(),
       child: Row(
         children: [
           SizedBox(
-            width: 100.0,
-            child: Text(label, style: AppTypography.telemetryLabel),
+            width: 105.0,
+            child: Text(
+              label,
+              style: AppTypography.telemetryLabel.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
           Expanded(
             child: SliderTheme(
@@ -127,9 +136,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 activeTrackColor: AppColors.solarAmber,
                 inactiveTrackColor: AppColors.structuralSeam,
                 thumbColor: AppColors.solarGold,
-                trackHeight: 3.0,
-                thumbShape: RoundSliderThumbShape(enabledThumbRadius: 6.0),
-                overlayShape: RoundSliderOverlayShape(overlayRadius: 14.0),
+                trackHeight: 4.0,
+                thumbShape: RoundSliderThumbShape(enabledThumbRadius: 8.0),
+                overlayShape: RoundSliderOverlayShape(overlayRadius: 18.0),
               ),
               child: Slider(
                 value: value,
@@ -140,11 +149,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           SizedBox(
-            width: 44.0,
+            width: 46.0,
             child: Text(
               '${(value * 100).toInt()}%',
               textAlign: TextAlign.end,
-              style: AppTypography.telemetryValueSm.copyWith(fontSize: 12.0),
+              style: AppTypography.telemetryValueSm.copyWith(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -161,6 +173,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4.0),
       padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+      constraints: const BoxConstraints(minHeight: 52.0),
       decoration: AppDecorations.hudModule(),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -168,15 +181,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   label,
-                  style: AppTypography.button.copyWith(fontSize: 13.0),
+                  style: AppTypography.button.copyWith(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 2.0),
                 Text(
                   subtitle,
-                  style: AppTypography.telemetryLabel.copyWith(fontSize: 10.0),
+                  style: AppTypography.telemetryLabel.copyWith(
+                    fontSize: 10.5,
+                    color: AppColors.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -185,9 +205,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Switch(
             value: value,
             activeThumbColor: AppColors.solarAmber,
-            activeTrackColor: AppColors.solarAmber.withValues(alpha: 0.4),
+            activeTrackColor: AppColors.solarAmber.withValues(alpha: 0.45),
             inactiveTrackColor: AppColors.structuralSeam,
-            onChanged: onChanged,
+            onChanged: (val) {
+              HapticsService.instance.triggerClick();
+              onChanged(val);
+            },
           ),
         ],
       ),
@@ -198,22 +221,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final isSelected = (_touchScale - scaleVal).abs() < 0.05;
     return InkWell(
       onTap: () {
+        HapticsService.instance.triggerClick();
         setState(() => _touchScale = scaleVal);
         _saveTouchSettings();
         widget.onTouchScaleChanged?.call(scaleVal);
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
+        constraints: const BoxConstraints(minHeight: 36.0, minWidth: 50.0),
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+        alignment: Alignment.center,
         decoration: ShapeDecoration(
           color: isSelected
-              ? AppColors.solarAmber.withValues(alpha: 0.2)
+              ? AppColors.solarAmber.withValues(alpha: 0.25)
               : AppColors.canvasDark,
           shape: AppDecorations.chamferShape(
             chamfer: AppDecorations.chamferXs,
             borderColor: isSelected
                 ? AppColors.solarAmber
                 : AppColors.structuralSeam,
+            borderWidth: isSelected ? 1.8 : 1.0,
           ),
+          shadows: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppColors.solarAmber.withValues(alpha: 0.35),
+                    blurRadius: 10.0,
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           label,
@@ -222,7 +257,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ? AppColors.solarAmber
                 : AppColors.onSurfaceVariant,
             fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-            fontSize: 9.5,
+            fontSize: 10.5,
           ),
         ),
       ),
@@ -231,6 +266,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final viewPadding = MediaQuery.viewPaddingOf(context);
+    final safeLeft = math.max(viewPadding.left, 20.0);
+    final safeRight = math.max(viewPadding.right, 20.0);
+
     return Scaffold(
       backgroundColor: AppColors.obsidianVoid,
       body: KeyboardListener(
@@ -247,11 +286,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: SafeArea(
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 500.0),
+              constraints: const BoxConstraints(maxWidth: 580.0),
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24.0,
-                  vertical: 16.0,
+                padding: EdgeInsets.only(
+                  left: safeLeft,
+                  right: safeRight,
+                  top: 10.0,
+                  bottom: 12.0,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -262,11 +303,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         if (widget.onBack != null)
                           IconButton(
+                            iconSize: 26.0,
+                            padding: const EdgeInsets.all(8.0),
+                            constraints: const BoxConstraints(
+                              minWidth: 48.0,
+                              minHeight: 48.0,
+                            ),
                             icon: const Icon(
                               Icons.arrow_back,
                               color: AppColors.onSurface,
                             ),
-                            onPressed: widget.onBack,
+                            onPressed: () {
+                              HapticsService.instance.triggerClick();
+                              widget.onBack?.call();
+                            },
                           )
                         else
                           const SizedBox(width: 48.0),
@@ -277,16 +327,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             style: AppTypography.sectionHeader.copyWith(
                               fontWeight: FontWeight.w800,
                               letterSpacing: 2.0,
+                              fontSize: 17.0,
                             ),
                           ),
                         ),
                         const SizedBox(width: 48.0),
                       ],
                     ),
-                    const SizedBox(height: 16.0),
+                    const SizedBox(height: 8.0),
 
                     Expanded(
                       child: ListView(
+                        physics: const BouncingScrollPhysics(),
                         children: [
                           // Audio Section
                           _buildSectionHeader('AUDIO TELEMETRY'),
@@ -359,8 +411,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             margin: const EdgeInsets.symmetric(vertical: 4.0),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 14.0,
-                              vertical: 10.0,
+                              vertical: 12.0,
                             ),
+                            constraints: const BoxConstraints(minHeight: 52.0),
                             decoration: AppDecorations.hudModule(),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -373,14 +426,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       Text(
                                         'CONTROLLER SCALE',
                                         style: AppTypography.button.copyWith(
-                                          fontSize: 13.0,
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w700,
                                         ),
                                       ),
                                       const SizedBox(height: 2.0),
                                       Text(
-                                        'Adjust touch rocker and button sizing',
+                                        'Rocker & action button hit size',
                                         style: AppTypography.telemetryLabel
-                                            .copyWith(fontSize: 10.0),
+                                            .copyWith(fontSize: 10.5),
                                       ),
                                     ],
                                   ),
@@ -389,11 +443,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    _buildScaleChip('0.85x', 0.85),
+                                    _buildScaleChip('0.9x', 0.9),
                                     const SizedBox(width: 6.0),
                                     _buildScaleChip('1.0x', 1.0),
                                     const SizedBox(width: 6.0),
                                     _buildScaleChip('1.15x', 1.15),
+                                    const SizedBox(width: 6.0),
+                                    _buildScaleChip('1.3x', 1.3),
                                   ],
                                 ),
                               ],
@@ -450,7 +506,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         style: AppTypography.telemetryLabel
                                             .copyWith(
                                               color: AppColors.error,
-                                              fontWeight: FontWeight.w700,
+                                              fontWeight: FontWeight.w800,
                                             ),
                                       ),
                                       const SizedBox(height: 2.0),
@@ -458,7 +514,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         'Purges chamber records, best split times, and milestone badges',
                                         style: AppTypography.bodySmall.copyWith(
                                           color: AppColors.onSurfaceVariant,
-                                          fontSize: 10.0,
+                                          fontSize: 10.5,
                                         ),
                                       ),
                                     ],
@@ -473,7 +529,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 16.0,
-                                      vertical: 10.0,
+                                      vertical: 12.0,
                                     ),
                                     shape: AppDecorations.chamferShape(
                                       chamfer: AppDecorations.chamferXs,
@@ -486,22 +542,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10.0),
-                    Center(
-                      child: Text(
-                        AppPlatform.isTouchDevice(context)
-                            ? 'TAP BACK ARROW TO RETURN'
-                            : '[ESC / BACKSPACE] RETURN TO MAIN MENU',
-                        style: AppTypography.telemetryLabel.copyWith(
-                          fontSize: 9.0,
-                          color: AppColors.onSurfaceVariant.withValues(
-                            alpha: 0.7,
+                          const SizedBox(height: 18.0),
+                          Center(
+                            child: Text(
+                              AppPlatform.isTouchDevice(context)
+                                  ? 'TAP BACK ARROW TO RETURN'
+                                  : '[ESC / BACKSPACE] RETURN TO MAIN MENU',
+                              style: AppTypography.telemetryLabel.copyWith(
+                                fontSize: 9.5,
+                                color: AppColors.onSurfaceVariant.withValues(
+                                  alpha: 0.75,
+                                ),
+                                letterSpacing: 1.2,
+                              ),
+                            ),
                           ),
-                          letterSpacing: 1.2,
-                        ),
+                          const SizedBox(height: 24.0),
+                        ],
                       ),
                     ),
                   ],

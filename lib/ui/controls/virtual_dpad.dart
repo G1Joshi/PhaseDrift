@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/domain/domain.dart';
@@ -65,34 +67,45 @@ class _VirtualDpadState extends State<VirtualDpad> {
     required double width,
     required double height,
   }) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 50),
-      width: width,
-      height: height,
-      decoration: ShapeDecoration(
-        color: isActive
-            ? activeColor.withValues(alpha: 0.35)
-            : AppColors.canvasDark.withValues(alpha: 0.75),
-        shape: AppDecorations.chamferShape(
-          chamfer: AppDecorations.chamferSm * widget.scale,
-          borderColor: isActive ? activeColor : AppColors.structuralSeam,
-          borderWidth: isActive ? 2.0 : 1.5,
+    return AnimatedScale(
+      scale: isActive ? 0.94 : 1.0,
+      duration: const Duration(milliseconds: 60),
+      curve: Curves.easeOutCubic,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 60),
+        width: width,
+        height: height,
+        decoration: ShapeDecoration(
+          color: isActive
+              ? activeColor.withValues(alpha: 0.38)
+              : AppColors.canvasDark.withValues(alpha: 0.82),
+          shape: AppDecorations.chamferShape(
+            chamfer: AppDecorations.chamferSm * 1.2 * widget.scale,
+            borderColor: isActive ? activeColor : AppColors.structuralSeam,
+            borderWidth: isActive ? 2.5 : 1.5,
+          ),
+          shadows: isActive
+              ? [
+                  BoxShadow(
+                    color: activeColor.withValues(alpha: 0.50),
+                    blurRadius: 18.0 * widget.scale,
+                    spreadRadius: 1.5,
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    blurRadius: 6.0,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
         ),
-        shadows: isActive
-            ? [
-                BoxShadow(
-                  color: activeColor.withValues(alpha: 0.40),
-                  blurRadius: 16.0 * widget.scale,
-                  spreadRadius: 1.0,
-                ),
-              ]
-            : null,
-      ),
-      child: Center(
-        child: Icon(
-          icon,
-          color: isActive ? activeColor : AppColors.onSurface,
-          size: 28.0 * widget.scale,
+        child: Center(
+          child: Icon(
+            icon,
+            color: isActive ? activeColor : AppColors.onSurface,
+            size: 34.0 * widget.scale,
+          ),
         ),
       ),
     );
@@ -100,26 +113,33 @@ class _VirtualDpadState extends State<VirtualDpad> {
 
   Widget _buildDirectionalRocker() {
     final activeColor = widget.phase.primaryColor;
-    final btnWidth = 66.0 * widget.scale;
-    final btnHeight = 60.0 * widget.scale;
-    final gap = 10.0 * widget.scale;
-    final totalWidth = (btnWidth * 2) + gap;
+    // Substantially larger dimensions for finger comfort on mobile
+    final btnWidth = 84.0 * widget.scale;
+    final btnHeight = 74.0 * widget.scale;
+    final gap = 12.0 * widget.scale;
+    final visualWidth = (btnWidth * 2) + gap;
 
     final isLeftActive = _currentMoveAxis < -0.1;
     final isRightActive = _currentMoveAxis > 0.1;
+
+    // Generous touch slop padding so thumb dragging outside never drops inputs
+    const touchPaddingH = 12.0;
+    const touchPaddingV = 16.0;
+    final totalHitWidth = visualWidth + (touchPaddingH * 2);
+    final totalHitHeight = btnHeight + (touchPaddingV * 2);
 
     return Listener(
       behavior: HitTestBehavior.opaque,
       onPointerDown: (event) {
         _rockerPointerId = event.pointer;
-        final mid = totalWidth / 2;
+        final mid = totalHitWidth / 2;
         final newDir = event.localPosition.dx < mid ? -1.0 : 1.0;
         _setDirection(newDir);
         HapticsService.instance.triggerTouchDown();
       },
       onPointerMove: (event) {
         if (event.pointer != _rockerPointerId) return;
-        final mid = totalWidth / 2;
+        final mid = totalHitWidth / 2;
         final newDir = event.localPosition.dx < mid ? -1.0 : 1.0;
         _setDirection(newDir);
       },
@@ -135,28 +155,33 @@ class _VirtualDpadState extends State<VirtualDpad> {
           _setDirection(0.0);
         }
       },
-      child: SizedBox(
-        width: totalWidth,
-        height: btnHeight,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildDirectionButton(
-              icon: Icons.chevron_left,
-              isActive: isLeftActive,
-              activeColor: activeColor,
-              width: btnWidth,
-              height: btnHeight,
-            ),
-            SizedBox(width: gap),
-            _buildDirectionButton(
-              icon: Icons.chevron_right,
-              isActive: isRightActive,
-              activeColor: activeColor,
-              width: btnWidth,
-              height: btnHeight,
-            ),
-          ],
+      child: Container(
+        width: totalHitWidth,
+        height: totalHitHeight,
+        alignment: Alignment.center,
+        child: SizedBox(
+          width: visualWidth,
+          height: btnHeight,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDirectionButton(
+                icon: Icons.chevron_left,
+                isActive: isLeftActive,
+                activeColor: activeColor,
+                width: btnWidth,
+                height: btnHeight,
+              ),
+              SizedBox(width: gap),
+              _buildDirectionButton(
+                icon: Icons.chevron_right,
+                isActive: isRightActive,
+                activeColor: activeColor,
+                width: btnWidth,
+                height: btnHeight,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -164,7 +189,9 @@ class _VirtualDpadState extends State<VirtualDpad> {
 
   Widget _buildShiftButton() {
     final activeColor = widget.phase.accentColor;
-    final size = 54.0 * widget.scale;
+    // Enlarged from 54 to 72dp for effortless mid-air phase shifts
+    final size = 72.0 * widget.scale;
+    const touchSlop = 10.0;
 
     return Listener(
       behavior: HitTestBehavior.opaque,
@@ -186,48 +213,64 @@ class _VirtualDpadState extends State<VirtualDpad> {
           if (mounted) setState(() => _shiftPressed = false);
         }
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 50),
-        width: size,
-        height: size,
-        decoration: ShapeDecoration(
-          color: _shiftPressed
-              ? activeColor.withValues(alpha: 0.40)
-              : AppColors.canvasDark.withValues(alpha: 0.75),
-          shape: AppDecorations.chamferShape(
-            chamfer: AppDecorations.chamferMd * widget.scale,
-            borderColor: _shiftPressed ? activeColor : AppColors.border,
-            borderWidth: _shiftPressed ? 2.0 : 1.5,
-          ),
-          shadows: _shiftPressed
-              ? [
-                  BoxShadow(
-                    color: activeColor.withValues(alpha: 0.45),
-                    blurRadius: 18.0 * widget.scale,
-                    spreadRadius: 1.0,
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.swap_vert,
-              color: _shiftPressed ? activeColor : AppColors.onSurface,
-              size: 22.0 * widget.scale,
-            ),
-            const SizedBox(height: 1.0),
-            Text(
-              'SHIFT',
-              style: AppTypography.telemetryLabel.copyWith(
-                fontSize: 8.5 * widget.scale,
-                color: _shiftPressed ? activeColor : AppColors.onSurfaceVariant,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.0,
+      child: Padding(
+        padding: const EdgeInsets.all(touchSlop),
+        child: AnimatedScale(
+          scale: _shiftPressed ? 0.93 : 1.0,
+          duration: const Duration(milliseconds: 60),
+          curve: Curves.easeOutCubic,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 60),
+            width: size,
+            height: size,
+            decoration: ShapeDecoration(
+              color: _shiftPressed
+                  ? activeColor.withValues(alpha: 0.42)
+                  : AppColors.canvasDark.withValues(alpha: 0.82),
+              shape: AppDecorations.chamferShape(
+                chamfer: AppDecorations.chamferMd * 1.15 * widget.scale,
+                borderColor: _shiftPressed ? activeColor : AppColors.border,
+                borderWidth: _shiftPressed ? 2.5 : 1.5,
               ),
+              shadows: _shiftPressed
+                  ? [
+                      BoxShadow(
+                        color: activeColor.withValues(alpha: 0.55),
+                        blurRadius: 22.0 * widget.scale,
+                        spreadRadius: 1.5,
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.35),
+                        blurRadius: 6.0,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
             ),
-          ],
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.swap_vert,
+                  color: _shiftPressed ? activeColor : AppColors.onSurface,
+                  size: 28.0 * widget.scale,
+                ),
+                const SizedBox(height: 1.0),
+                Text(
+                  'SHIFT',
+                  style: AppTypography.telemetryLabel.copyWith(
+                    fontSize: 10.5 * widget.scale,
+                    color: _shiftPressed
+                        ? activeColor
+                        : AppColors.onSurfaceVariant,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -235,7 +278,9 @@ class _VirtualDpadState extends State<VirtualDpad> {
 
   Widget _buildJumpButton() {
     final activeColor = widget.phase.primaryColor;
-    final size = 64.0 * widget.scale;
+    // Enlarged from 64 to 84dp for arcade-standard unmissable jump control
+    final size = 84.0 * widget.scale;
+    const touchSlop = 10.0;
 
     return Listener(
       behavior: HitTestBehavior.opaque,
@@ -259,48 +304,62 @@ class _VirtualDpadState extends State<VirtualDpad> {
           widget.onJumpReleased();
         }
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 50),
-        width: size,
-        height: size,
-        decoration: ShapeDecoration(
-          color: _jumpHeld
-              ? activeColor.withValues(alpha: 0.40)
-              : AppColors.canvasDark.withValues(alpha: 0.75),
-          shape: AppDecorations.chamferShape(
-            chamfer: AppDecorations.chamferMd * widget.scale,
-            borderColor: _jumpHeld ? activeColor : AppColors.border,
-            borderWidth: _jumpHeld ? 2.2 : 1.5,
-          ),
-          shadows: _jumpHeld
-              ? [
-                  BoxShadow(
-                    color: activeColor.withValues(alpha: 0.50),
-                    blurRadius: 22.0 * widget.scale,
-                    spreadRadius: 1.5,
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.keyboard_arrow_up,
-              color: _jumpHeld ? activeColor : AppColors.onSurface,
-              size: 26.0 * widget.scale,
-            ),
-            const SizedBox(height: 1.0),
-            Text(
-              'JUMP',
-              style: AppTypography.telemetryLabel.copyWith(
-                fontSize: 9.5 * widget.scale,
-                color: _jumpHeld ? activeColor : AppColors.onSurface,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.2,
+      child: Padding(
+        padding: const EdgeInsets.all(touchSlop),
+        child: AnimatedScale(
+          scale: _jumpHeld ? 0.93 : 1.0,
+          duration: const Duration(milliseconds: 60),
+          curve: Curves.easeOutCubic,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 60),
+            width: size,
+            height: size,
+            decoration: ShapeDecoration(
+              color: _jumpHeld
+                  ? activeColor.withValues(alpha: 0.42)
+                  : AppColors.canvasDark.withValues(alpha: 0.82),
+              shape: AppDecorations.chamferShape(
+                chamfer: AppDecorations.chamferMd * 1.15 * widget.scale,
+                borderColor: _jumpHeld ? activeColor : AppColors.border,
+                borderWidth: _jumpHeld ? 2.6 : 1.5,
               ),
+              shadows: _jumpHeld
+                  ? [
+                      BoxShadow(
+                        color: activeColor.withValues(alpha: 0.60),
+                        blurRadius: 24.0 * widget.scale,
+                        spreadRadius: 2.0,
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.35),
+                        blurRadius: 6.0,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
             ),
-          ],
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.keyboard_arrow_up,
+                  color: _jumpHeld ? activeColor : AppColors.onSurface,
+                  size: 34.0 * widget.scale,
+                ),
+                const SizedBox(height: 1.0),
+                Text(
+                  'JUMP',
+                  style: AppTypography.telemetryLabel.copyWith(
+                    fontSize: 11.5 * widget.scale,
+                    color: _jumpHeld ? activeColor : AppColors.onSurface,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -314,36 +373,40 @@ class _VirtualDpadState extends State<VirtualDpad> {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Padding(
-          padding: EdgeInsets.only(bottom: 10.0 * widget.scale),
+          padding: EdgeInsets.only(bottom: 12.0 * widget.scale),
           child: _buildShiftButton(),
         ),
-        SizedBox(width: 12.0 * widget.scale),
+        SizedBox(width: 4.0 * widget.scale),
         _buildJumpButton(),
       ],
     );
 
     final size = MediaQuery.sizeOf(context);
     final isCompact = size.height <= 480.0;
+    final viewPadding = MediaQuery.viewPaddingOf(context);
+
+    // Compute safe horizontal margins that respect camera hole punches / notches
+    final safeLeft = math.max(viewPadding.left, isCompact ? 16.0 : 24.0);
+    final safeRight = math.max(viewPadding.right, isCompact ? 16.0 : 24.0);
+    // Keep above Android navigation pill or gesture bar
+    final safeBottom = math.max(viewPadding.bottom, isCompact ? 6.0 : 12.0);
 
     return Align(
       alignment: Alignment.bottomCenter,
       child: Opacity(
         opacity: widget.opacity.clamp(0.2, 1.0),
-        child: SafeArea(
-          top: false,
-          maintainBottomViewPadding: true,
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: isCompact ? 16.0 : 24.0,
-              vertical: isCompact ? 10.0 : 16.0,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: widget.southpaw
-                  ? [actionCluster, rocker]
-                  : [rocker, actionCluster],
-            ),
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: safeLeft,
+            right: safeRight,
+            bottom: safeBottom,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: widget.southpaw
+                ? [actionCluster, rocker]
+                : [rocker, actionCluster],
           ),
         ),
       ),
