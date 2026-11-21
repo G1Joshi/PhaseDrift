@@ -1,0 +1,37 @@
+name: Deploy Web
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  deploy-pages:
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.cicd.outputs.page-url }}
+    steps:
+      - uses: g1j0shi/flutter-web-app-deployment@main
+        id: cicd
+
+  deploy-channel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          cache: true
+      - run: |
+          flutter pub get
+          flutter test
+          flutter build web --wasm
+          sed -i 's|<base href="/">|<base href="./">|g' build/web/index.html
+      - uses: remarkablegames/setup-butler@v3
+      - env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: butler push build/web g1joshi/phasedrift:web --userversion "${GITHUB_REF_NAME}"
