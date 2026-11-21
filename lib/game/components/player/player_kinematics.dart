@@ -171,6 +171,28 @@ class PlayerKinematics {
               }
             } else if (vy < 0) {
               if (y - halfH >= obstacle.bottom - 4.0) {
+                // Corner Nudge: Celest-style ceiling corner correction
+                final leftOverlap = (x + halfW) - obstacle.left;
+                final rightOverlap = obstacle.right - (x - halfW);
+                if (leftOverlap > 0 &&
+                    leftOverlap <= 4.0 &&
+                    _canNudge(
+                      x - (leftOverlap + 0.5),
+                      targetY,
+                      solidObstacles,
+                    )) {
+                  x -= (leftOverlap + 0.5);
+                  continue;
+                } else if (rightOverlap > 0 &&
+                    rightOverlap <= 4.0 &&
+                    _canNudge(
+                      x + (rightOverlap + 0.5),
+                      targetY,
+                      solidObstacles,
+                    )) {
+                  x += (rightOverlap + 0.5);
+                  continue;
+                }
                 resolvedY = math.max(resolvedY, obstacle.bottom + halfH);
                 vy = 0.0;
               }
@@ -182,10 +204,26 @@ class PlayerKinematics {
                 groundedThisFrame = true;
               }
             } else if (vy > 0) {
-              if (y + halfH <= obstacle.top + 4.0) {
-                resolvedY = math.min(resolvedY, obstacle.top - halfH);
-                vy = 0.0;
+              // In Void phase, vy > 0 is upward into ceiling relative to inverted gravity
+              final leftOverlap = (x + halfW) - obstacle.left;
+              final rightOverlap = obstacle.right - (x - halfW);
+              if (leftOverlap > 0 &&
+                  leftOverlap <= 4.0 &&
+                  _canNudge(x - (leftOverlap + 0.5), targetY, solidObstacles)) {
+                x -= (leftOverlap + 0.5);
+                continue;
+              } else if (rightOverlap > 0 &&
+                  rightOverlap <= 4.0 &&
+                  _canNudge(
+                    x + (rightOverlap + 0.5),
+                    targetY,
+                    solidObstacles,
+                  )) {
+                x += (rightOverlap + 0.5);
+                continue;
               }
+              resolvedY = math.min(resolvedY, obstacle.top - halfH);
+              vy = 0.0;
             }
           }
         }
@@ -299,5 +337,20 @@ class PlayerKinematics {
     isGrounded = false;
     coyoteTimer = 0.0;
     jumpBufferTimer = 0.0;
+  }
+
+  bool _canNudge(double newX, double checkY, List<Rect> solidObstacles) {
+    const halfW = KinematicConstants.playerWidth / 2;
+    const halfH = KinematicConstants.playerHeight / 2;
+    final testBox = Rect.fromLTWH(
+      newX - halfW + 1.0,
+      checkY - halfH + 1.0,
+      halfW * 2 - 2.0,
+      halfH * 2 - 2.0,
+    );
+    for (final obs in solidObstacles) {
+      if (testBox.overlaps(obs)) return false;
+    }
+    return true;
   }
 }

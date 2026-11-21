@@ -370,7 +370,7 @@ class _VictoryScreenState extends State<VictoryScreen> {
         'CHAMBER ${widget.chamberId.toString().padLeft(2, '0')}';
     final hasNext = widget.onNextChamber != null;
     final size = MediaQuery.sizeOf(context);
-    final isCompactLandscape = size.height <= 480.0 && size.width > size.height;
+    final isLandscape = size.width > size.height;
 
     return KeyboardListener(
       focusNode: _focusNode,
@@ -388,7 +388,7 @@ class _VictoryScreenState extends State<VictoryScreen> {
 
           // Dialog
           Center(
-            child: isCompactLandscape
+            child: isLandscape
                 ? ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 620.0),
                     child: Container(

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -107,8 +109,12 @@ class _TitleScreenState extends State<TitleScreen> {
       },
       isFocused: _focusedIndex == index,
       isPrimary: isPrimary,
-      padding: EdgeInsets.symmetric(vertical: compact ? 8.0 : 13.0),
-      fontSize: compact ? 12.0 : 13.5,
+      padding: EdgeInsets.symmetric(
+        vertical: compact ? 10.0 : 13.0,
+        horizontal: 16.0,
+      ),
+      minHeight: compact ? 44.0 : 48.0,
+      fontSize: compact ? 12.5 : 14.0,
     );
   }
 
@@ -117,26 +123,28 @@ class _TitleScreenState extends State<TitleScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
+          padding: const EdgeInsets.symmetric(horizontal: 9.0, vertical: 4.0),
           decoration: AppDecorations.hudModule(),
           child: Text(
             'v0.1.0 // STABLE',
             style: AppTypography.telemetryLabel.copyWith(
-              fontSize: 9.0,
+              fontSize: 9.5,
               fontWeight: FontWeight.w700,
               color: AppColors.onSurfaceVariant,
             ),
           ),
         ),
         IconButton(
+          constraints: const BoxConstraints(minWidth: 44.0, minHeight: 44.0),
           icon: Icon(
             _audio.isMuted ? Icons.volume_off : Icons.volume_up,
             color: _audio.isMuted
                 ? AppColors.hazardRed
                 : AppColors.onSurfaceVariant,
-            size: 20.0,
+            size: 22.0,
           ),
           onPressed: () {
+            HapticsService.instance.triggerClick();
             setState(() => _audio.toggleMute());
           },
         ),
@@ -150,8 +158,8 @@ class _TitleScreenState extends State<TitleScreen> {
       children: [
         // Dual Reality Monogram Icon
         Container(
-          width: compact ? 44.0 : 64.0,
-          height: compact ? 44.0 : 64.0,
+          width: compact ? 52.0 : 68.0,
+          height: compact ? 52.0 : 68.0,
           decoration: ShapeDecoration(
             color: AppColors.cardSurface,
             shape: AppDecorations.chamferShape(
@@ -162,26 +170,26 @@ class _TitleScreenState extends State<TitleScreen> {
             ),
             shadows: [
               BoxShadow(
-                color: AppColors.voidCyan.withValues(alpha: 0.2),
-                blurRadius: compact ? 16.0 : 24.0,
+                color: AppColors.voidCyan.withValues(alpha: 0.25),
+                blurRadius: compact ? 18.0 : 26.0,
               ),
             ],
           ),
           child: Center(
             child: Icon(
               Icons.change_circle,
-              size: compact ? 26.0 : 38.0,
+              size: compact ? 30.0 : 42.0,
               color: AppColors.solarAmber,
             ),
           ),
         ),
-        SizedBox(height: compact ? 8.0 : 20.0),
+        SizedBox(height: compact ? 10.0 : 20.0),
 
         // Title
         Text(
           'PHASEDRIFT',
           style: AppTypography.displayHero.copyWith(
-            fontSize: compact ? 28.0 : 44.0,
+            fontSize: compact ? 32.0 : 46.0,
             letterSpacing: -1.0,
             fontWeight: FontWeight.w900,
           ),
@@ -194,17 +202,17 @@ class _TitleScreenState extends State<TitleScreen> {
           style: AppTypography.telemetryLabel.copyWith(
             color: AppColors.voidCyan,
             fontWeight: FontWeight.w700,
-            letterSpacing: compact ? 1.5 : 2.0,
-            fontSize: compact ? 8.5 : 10.0,
+            letterSpacing: compact ? 1.6 : 2.2,
+            fontSize: compact ? 9.0 : 10.5,
           ),
         ),
-        SizedBox(height: compact ? 8.0 : 16.0),
+        SizedBox(height: compact ? 10.0 : 16.0),
 
         // Signature Handover Accent Line
         AmberCyanProgressBar(
           value: 1.0,
-          height: compact ? 2.5 : 3.0,
-          width: compact ? 140.0 : 180.0,
+          height: compact ? 3.0 : 3.5,
+          width: compact ? 150.0 : 200.0,
           showGlint: false,
         ),
       ],
@@ -246,8 +254,8 @@ class _TitleScreenState extends State<TitleScreen> {
         Text(
           isTouch ? 'TAP TO ENTER  \u2022  DRAG TO EXPLORE' : '[WASD / ARROWS] NAVIGATE  \u2022  [SPACE/ENTER] SELECT  \u2022  [M] BADGES',
           style: AppTypography.telemetryLabel.copyWith(
-            fontSize: 8.5,
-            color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
+            fontSize: 9.0,
+            color: AppColors.onSurfaceVariant.withValues(alpha: 0.75),
             letterSpacing: 1.2,
             fontWeight: FontWeight.w600,
           ),
@@ -259,8 +267,19 @@ class _TitleScreenState extends State<TitleScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    final isCompactLandscape = size.height <= 480.0 && size.width > size.height;
+    final isLandscape = size.width > size.height;
+    final isCompactLandscape = isLandscape && size.height <= 520.0;
     final isTouch = AppPlatform.isTouchDevice(context);
+
+    final viewPadding = MediaQuery.viewPaddingOf(context);
+    final safeLeft = math.max(
+      viewPadding.left,
+      isCompactLandscape ? 20.0 : 28.0,
+    );
+    final safeRight = math.max(
+      viewPadding.right,
+      isCompactLandscape ? 20.0 : 28.0,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.obsidianVoid,
@@ -272,11 +291,13 @@ class _TitleScreenState extends State<TitleScreen> {
           behavior: HitTestBehavior.translucent,
           onTapDown: (_) => _ensureAudioStarted(),
           child: SafeArea(
-            child: isCompactLandscape
+            child: isLandscape
                 ? Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24.0,
-                      vertical: 10.0,
+                    padding: EdgeInsets.only(
+                      left: safeLeft,
+                      right: safeRight,
+                      top: 8.0,
+                      bottom: 12.0,
                     ),
                     child: Column(
                       children: [
@@ -286,19 +307,23 @@ class _TitleScreenState extends State<TitleScreen> {
                           child: Row(
                             children: [
                               Expanded(
+                                flex: 5,
                                 child: Center(
-                                  child: _buildBrandLogo(compact: true),
+                                  child: _buildBrandLogo(
+                                    compact: isCompactLandscape,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 24.0),
                               Expanded(
+                                flex: 6,
                                 child: Center(
                                   child: ConstrainedBox(
                                     constraints: const BoxConstraints(
-                                      maxWidth: 320.0,
+                                      maxWidth: 360.0,
                                     ),
                                     child: _buildMenuColumn(
-                                      compact: true,
+                                      compact: isCompactLandscape,
                                       isTouch: isTouch,
                                     ),
                                   ),

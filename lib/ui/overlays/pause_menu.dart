@@ -109,6 +109,7 @@ class _PauseMenuState extends State<PauseMenu> {
     bool isPrimary = false,
     EdgeInsetsGeometry? padding,
     double? fontSize,
+    double minHeight = 44.0,
   }) {
     return ChamferButton(
       label: label,
@@ -119,8 +120,11 @@ class _PauseMenuState extends State<PauseMenu> {
       isFocused: _focusedIndex == index,
       isPrimary: isPrimary,
       accentColor: widget.phase.primaryColor,
-      padding: padding ?? const EdgeInsets.symmetric(vertical: 12.0),
+      padding:
+          padding ??
+          const EdgeInsets.symmetric(vertical: 11.0, horizontal: 14.0),
       fontSize: fontSize ?? 13.0,
+      minHeight: minHeight,
     );
   }
 
@@ -138,143 +142,161 @@ class _PauseMenuState extends State<PauseMenu> {
       onKeyEvent: _handleKeyEvent,
       child: Stack(
         children: [
-          // Backdrop Blur & Dim
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
-            child: Container(
-              color: AppColors.obsidianVoid.withValues(alpha: 0.75),
+          // Backdrop Blur & Dim with tap-to-resume
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.onResume,
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+              child: Container(
+                color: AppColors.obsidianVoid.withValues(alpha: 0.75),
+              ),
             ),
           ),
 
           // Centered Dialog
           Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 340.0),
-              child: Container(
-                margin: EdgeInsets.symmetric(
-                  horizontal: 24.0,
-                  vertical: isCompact ? 10.0 : 24.0,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {}, // Prevent taps inside dialog from closing it
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: isCompact ? 380.0 : 420.0,
                 ),
-                padding: EdgeInsets.symmetric(
-                  horizontal: 24.0,
-                  vertical: isCompact ? 12.0 : 24.0,
-                ),
-                decoration: ShapeDecoration(
-                  color: AppColors.canvasDark,
-                  shape: AppDecorations.chamferShape(
-                    chamfer: AppDecorations.chamferMd,
-                    borderColor: phaseColor,
-                    borderWidth: 1.5,
+                child: Container(
+                  margin: EdgeInsets.symmetric(
+                    horizontal: 20.0,
+                    vertical: isCompact ? 8.0 : 20.0,
                   ),
-                  shadows: [
-                    BoxShadow(
-                      color: phaseColor.withValues(alpha: 0.15),
-                      blurRadius: 24.0,
-                      spreadRadius: 2.0,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isCompact ? 18.0 : 24.0,
+                    vertical: isCompact ? 14.0 : 22.0,
+                  ),
+                  decoration: ShapeDecoration(
+                    color: AppColors.canvasDark,
+                    shape: AppDecorations.chamferShape(
+                      chamfer: AppDecorations.chamferMd,
+                      borderColor: phaseColor,
+                      borderWidth: 1.6,
                     ),
-                  ],
-                ),
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
+                    shadows: [
+                      BoxShadow(
+                        color: phaseColor.withValues(alpha: 0.20),
+                        blurRadius: 24.0,
+                        spreadRadius: 2.0,
+                      ),
+                    ],
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        'SYSTEM PAUSED',
-                        style: AppTypography.sectionHeader.copyWith(
-                          color: AppColors.onSurface,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.5,
-                          fontSize: isCompact ? 15.0 : 17.0,
-                        ),
+                      // Header with Title and Close Button
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const SizedBox(width: 32.0),
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'SYSTEM PAUSED',
+                                  style: AppTypography.sectionHeader.copyWith(
+                                    color: AppColors.onSurface,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.5,
+                                    fontSize: isCompact ? 15.0 : 17.0,
+                                  ),
+                                ),
+                                const SizedBox(height: 2.0),
+                                Text(
+                                  '$chamberCode // ${widget.chamberName.toUpperCase()}',
+                                  style: AppTypography.telemetryLabel.copyWith(
+                                    color: phaseColor,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: isCompact ? 9.5 : 10.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            constraints: const BoxConstraints(
+                              minWidth: 36.0,
+                              minHeight: 36.0,
+                            ),
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(
+                              Icons.close,
+                              color: AppColors.onSurfaceVariant,
+                              size: 20.0,
+                            ),
+                            onPressed: widget.onResume,
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 2.0),
-                      Text(
-                        '$chamberCode // ${widget.chamberName.toUpperCase()}',
-                        style: AppTypography.telemetryLabel.copyWith(
-                          color: phaseColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: isCompact ? 9.0 : 10.0,
-                        ),
-                      ),
-                      SizedBox(height: isCompact ? 10.0 : 20.0),
+                      SizedBox(height: isCompact ? 10.0 : 16.0),
+
+                      // Primary Resume Button
                       _buildMenuButton(
                         label: 'RESUME',
                         onTap: widget.onResume,
                         index: 0,
                         isPrimary: true,
-                        padding: EdgeInsets.symmetric(
-                          vertical: isCompact ? 9.0 : 12.0,
-                        ),
-                        fontSize: isCompact ? 12.5 : 13.0,
+                        minHeight: isCompact ? 46.0 : 50.0,
+                        fontSize: isCompact ? 13.5 : 14.0,
                       ),
-                      if (isCompact) ...[
-                        Row(
-                          children: [
+                      const SizedBox(height: 4.0),
+
+                      // Secondary Row: Restart + Settings side by side
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildMenuButton(
+                              label: 'RESTART',
+                              onTap: widget.onRestart,
+                              index: 1,
+                              minHeight: isCompact ? 42.0 : 46.0,
+                              fontSize: isCompact ? 12.0 : 12.5,
+                            ),
+                          ),
+                          if (widget.onSettings != null) ...[
+                            const SizedBox(width: 8.0),
                             Expanded(
                               child: _buildMenuButton(
-                                label: 'RESTART',
-                                onTap: widget.onRestart,
-                                index: 1,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 8.0,
-                                ),
-                                fontSize: 11.5,
+                                label: 'SETTINGS',
+                                onTap: widget.onSettings!,
+                                index: 2,
+                                minHeight: isCompact ? 42.0 : 46.0,
+                                fontSize: isCompact ? 12.0 : 12.5,
                               ),
                             ),
-                            if (widget.onSettings != null) ...[
-                              const SizedBox(width: 8.0),
-                              Expanded(
-                                child: _buildMenuButton(
-                                  label: 'SETTINGS',
-                                  onTap: widget.onSettings!,
-                                  index: 2,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8.0,
-                                  ),
-                                  fontSize: 11.5,
-                                ),
-                              ),
-                            ],
                           ],
-                        ),
-                        if (widget.onQuit != null)
-                          _buildMenuButton(
-                            label: 'CHAMBER MATRIX',
-                            onTap: widget.onQuit!,
-                            index: widget.onSettings != null ? 3 : 2,
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            fontSize: 11.5,
-                          ),
-                      ] else ...[
+                        ],
+                      ),
+                      const SizedBox(height: 4.0),
+
+                      // Chamber Matrix Exit
+                      if (widget.onQuit != null)
                         _buildMenuButton(
-                          label: 'RESTART CHAMBER',
-                          onTap: widget.onRestart,
-                          index: 1,
+                          label: 'CHAMBER MATRIX',
+                          onTap: widget.onQuit!,
+                          index: widget.onSettings != null ? 3 : 2,
+                          minHeight: isCompact ? 42.0 : 46.0,
+                          fontSize: isCompact ? 12.0 : 12.5,
                         ),
-                        if (widget.onSettings != null)
-                          _buildMenuButton(
-                            label: 'SETTINGS',
-                            onTap: widget.onSettings!,
-                            index: 2,
-                          ),
-                        if (widget.onQuit != null)
-                          _buildMenuButton(
-                            label: 'CHAMBER MATRIX',
-                            onTap: widget.onQuit!,
-                            index: widget.onSettings != null ? 3 : 2,
-                          ),
-                      ],
-                      SizedBox(height: isCompact ? 8.0 : 16.0),
+
+                      SizedBox(height: isCompact ? 8.0 : 12.0),
                       Text(
                         AppPlatform.isTouchDevice(context)
-                            ? 'TAP TO SELECT  \u2022  SWIPE TO DISMISS'
+                            ? 'TAP TO SELECT  \u2022  TAP OUTSIDE TO RESUME'
                             : '[ESC] RESUME  \u2022  [R] RESTART  \u2022  [ENTER] SELECT',
                         style: AppTypography.telemetryLabel.copyWith(
-                          fontSize: 8.5,
+                          fontSize: 9.0,
                           color: AppColors.onSurfaceVariant.withValues(
-                            alpha: 0.7,
+                            alpha: 0.75,
                           ),
+                          letterSpacing: 1.0,
                         ),
                       ),
                     ],

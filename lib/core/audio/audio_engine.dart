@@ -202,22 +202,38 @@ class AudioEngine {
     });
   }
 
-  Future<void> playSfx(String assetPath) async {
+  Future<void> playSfx(
+    String assetPath, {
+    double pitchVariation = 0.0,
+    double? volumeMultiplier,
+  }) async {
     if (_isMuted || effectiveSfxVolume <= 0.0) return;
     final player = _sfxPool[_sfxPoolIndex];
     _sfxPoolIndex = (_sfxPoolIndex + 1) % _sfxPool.length;
     try {
-      await player.play(AssetSource(assetPath), volume: effectiveSfxVolume);
+      final vol = ((volumeMultiplier ?? 1.0) * effectiveSfxVolume).clamp(
+        0.0,
+        1.0,
+      );
+      if (pitchVariation > 0.0 && !kIsWeb) {
+        final rate = 1.0 + (math.Random().nextDouble() - 0.5) * pitchVariation;
+        await player.setPlaybackRate(rate);
+      }
+      await player.play(AssetSource(assetPath), volume: vol);
     } catch (e) {
       if (e.toString().contains('AbortError')) return;
       debugPrint('AudioEngine.playSfx error: $e');
     }
   }
 
-  Future<void> playJump() => playSfx(AudioConstants.sfxJump);
-  Future<void> playShift() => playSfx(AudioConstants.sfxShift);
-  Future<void> playLand() => playSfx(AudioConstants.sfxLand);
-  Future<void> playShard() => playSfx(AudioConstants.sfxShard);
+  Future<void> playJump() =>
+      playSfx(AudioConstants.sfxJump, pitchVariation: 0.08);
+  Future<void> playShift() =>
+      playSfx(AudioConstants.sfxShift, pitchVariation: 0.06);
+  Future<void> playLand() =>
+      playSfx(AudioConstants.sfxLand, pitchVariation: 0.06);
+  Future<void> playShard() =>
+      playSfx(AudioConstants.sfxShard, pitchVariation: 0.04);
   Future<void> playDeath() => playSfx(AudioConstants.sfxDeath);
 
   void setMasterVolume(double volume) {

@@ -335,7 +335,10 @@ class _GameSessionViewState extends State<GameSessionView>
                   ? const Color(0xFF090704)
                   : const Color(0xFF03070C),
               body: MouseRegion(
-                cursor: SystemMouseCursors.basic,
+                cursor:
+                    (_game.isLoaded && !_game.isPaused && !_game.isCompleted)
+                    ? SystemMouseCursors.none
+                    : SystemMouseCursors.basic,
                 child: GestureDetector(
                   behavior: HitTestBehavior.translucent,
                   onTap: () {

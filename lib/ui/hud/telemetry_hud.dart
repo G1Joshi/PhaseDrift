@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/domain/domain.dart';
@@ -37,7 +39,7 @@ class TelemetryHud extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 2.0),
       child: Icon(
         Icons.diamond,
-        size: 14.0,
+        size: 15.0,
         color: isCollected ? AppColors.chronoShard : AppColors.structuralSeam,
       ),
     );
@@ -48,132 +50,145 @@ class TelemetryHud extends StatelessWidget {
     final speedRatio = maxVelocity > 0 ? (velocity.abs() / maxVelocity) : 0.0;
     final chamberCode = 'CHAMBER ${chamberNumber.toString().padLeft(2, '0')}';
     final size = MediaQuery.sizeOf(context);
+    final viewPadding = MediaQuery.viewPaddingOf(context);
     final isCompact = size.height <= 480.0 || size.width < 720.0;
-    final showCenterGauge = size.width >= 640.0;
+    final showCenterGauge = size.width >= 720.0 && size.height >= 380.0;
+
+    final safeLeft = math.max(viewPadding.left, isCompact ? 14.0 : 20.0);
+    final safeRight = math.max(viewPadding.right, isCompact ? 14.0 : 20.0);
+    final safeTop = math.max(viewPadding.top, isCompact ? 6.0 : 10.0);
 
     return Align(
       alignment: Alignment.topCenter,
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: isCompact ? 12.0 : 16.0,
-            vertical: isCompact ? 8.0 : 12.0,
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Top-Left: Chamber badge and Phase Indicator
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: isCompact ? 180.0 : 260.0,
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8.0,
-                        vertical: 4.0,
-                      ),
-                      decoration: AppDecorations.hudModule(),
-                      child: Text(
-                        '$chamberCode // ${chamberName.toUpperCase()}',
-                        style: AppTypography.telemetryLabel.copyWith(
-                          color: AppColors.onSurface,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: safeLeft,
+          right: safeRight,
+          top: safeTop,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Top-Left: Chamber badge and Phase Indicator
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: isCompact ? 190.0 : 260.0,
                   ),
-                  const SizedBox(height: 6.0),
-                  PhaseIndicator(phase: phase, compact: true),
-                ],
-              ),
-
-              // Top-Center: Velocity Gauge (hidden on narrow screens to prevent crowding)
-              if (showCenterGauge)
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'VELOCITY // ${velocity.abs().toStringAsFixed(0)} PX/S',
-                      style: AppTypography.telemetryLabel,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9.0,
+                      vertical: 5.0,
                     ),
-                    const SizedBox(height: 4.0),
-                    AmberCyanProgressBar(
-                      value: speedRatio,
-                      width: isCompact ? 110.0 : 140.0,
-                      height: 6.0,
-                    ),
-                  ],
-                ),
-
-              // Top-Right: Shards, Stopwatch, Pause Button
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    height: 42.0,
-                    padding: const EdgeInsets.symmetric(horizontal: 6.0),
-                    margin: const EdgeInsets.only(right: 8.0),
                     decoration: AppDecorations.hudModule(),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildShardPip(0),
-                        _buildShardPip(1),
-                        _buildShardPip(2),
-                      ],
+                    child: Text(
+                      '$chamberCode // ${chamberName.toUpperCase()}',
+                      style: AppTypography.telemetryLabel.copyWith(
+                        color: AppColors.onSurface,
+                        fontWeight: FontWeight.w700,
+                        fontSize: isCompact ? 9.5 : 11.0,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  SplitStopwatchView(
-                    elapsedMs: elapsedMs,
-                    bestTimeMs: bestTimeMs,
+                ),
+                const SizedBox(height: 5.0),
+                PhaseIndicator(phase: phase, compact: true),
+              ],
+            ),
+
+            // Top-Center: Velocity Gauge (hidden on narrow screens to prevent crowding)
+            if (showCenterGauge)
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'VELOCITY // ${velocity.abs().toStringAsFixed(0)} PX/S',
+                    style: AppTypography.telemetryLabel.copyWith(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                  if (onPause != null) ...[
-                    const SizedBox(width: 8.0),
-                    Tooltip(
-                      message: 'Pause [Esc]',
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            HapticsService.instance.triggerTouchDown();
-                            onPause!();
-                          },
-                          customBorder: AppDecorations.chamferShape(
+                  const SizedBox(height: 4.0),
+                  AmberCyanProgressBar(
+                    value: speedRatio,
+                    width: isCompact ? 110.0 : 140.0,
+                    height: 6.0,
+                  ),
+                ],
+              ),
+
+            // Top-Right: Shards, Stopwatch, Pause Button
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  height: 44.0,
+                  padding: const EdgeInsets.symmetric(horizontal: 7.0),
+                  margin: const EdgeInsets.only(right: 8.0),
+                  decoration: AppDecorations.hudModule(),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildShardPip(0),
+                      _buildShardPip(1),
+                      _buildShardPip(2),
+                    ],
+                  ),
+                ),
+                SplitStopwatchView(
+                  elapsedMs: elapsedMs,
+                  bestTimeMs: bestTimeMs,
+                ),
+                if (onPause != null) ...[
+                  const SizedBox(width: 8.0),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        HapticsService.instance.triggerTouchDown();
+                        onPause!();
+                      },
+                      customBorder: AppDecorations.chamferShape(
+                        chamfer: AppDecorations.chamferSm,
+                      ),
+                      child: Container(
+                        width: 46.0,
+                        height: 44.0,
+                        decoration: ShapeDecoration(
+                          color: AppColors.interactiveModule,
+                          shape: AppDecorations.chamferShape(
                             chamfer: AppDecorations.chamferSm,
+                            borderColor: AppColors.structuralSeam,
+                            borderWidth: 1.5,
                           ),
-                          child: Container(
-                            width: 42.0,
-                            height: 42.0,
-                            decoration: ShapeDecoration(
-                              color: AppColors.interactiveModule,
-                              shape: AppDecorations.chamferShape(
-                                chamfer: AppDecorations.chamferSm,
-                                borderColor: AppColors.structuralSeam,
-                              ),
+                          shadows: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              blurRadius: 6.0,
                             ),
-                            child: const Icon(
-                              Icons.pause,
-                              color: AppColors.onSurface,
-                              size: 18.0,
-                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.pause,
+                            color: AppColors.onSurface,
+                            size: 20.0,
                           ),
                         ),
                       ),
                     ),
-                  ],
+                  ),
                 ],
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
       ),
     );

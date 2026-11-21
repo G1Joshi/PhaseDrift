@@ -193,11 +193,19 @@ class _MilestonesDialogState extends State<MilestonesDialog> {
                         ],
                       ),
                       IconButton(
+                        constraints: const BoxConstraints(
+                          minWidth: 48.0,
+                          minHeight: 48.0,
+                        ),
                         icon: const Icon(
                           Icons.close,
                           color: AppColors.onSurface,
+                          size: 22.0,
                         ),
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: () {
+                          HapticsService.instance.triggerClick();
+                          Navigator.of(context).pop();
+                        },
                       ),
                     ],
                   ),
@@ -424,10 +432,14 @@ class _MilestonesDialogState extends State<MilestonesDialog> {
                         ),
                       ),
                       Text(
-                        '[ESC] CLOSE',
+                        AppPlatform.isTouchDevice(context)
+                            ? 'TAP [X] TO CLOSE'
+                            : '[ESC] CLOSE',
                         style: AppTypography.telemetryLabel.copyWith(
-                          color: AppColors.structuralSeam,
-                          fontSize: 9.0,
+                          color: AppColors.onSurfaceVariant.withValues(
+                            alpha: 0.8,
+                          ),
+                          fontSize: 9.5,
                         ),
                       ),
                     ],
@@ -446,17 +458,32 @@ class _MilestonesDialogState extends State<MilestonesDialog> {
     final activeColor = color ?? AppColors.voidCyan;
 
     return InkWell(
-      onTap: () => setState(() => _filterTier = tier),
+      onTap: () {
+        HapticsService.instance.triggerClick();
+        setState(() => _filterTier = tier);
+      },
+      borderRadius: BorderRadius.circular(4.0),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+        constraints: const BoxConstraints(minHeight: 36.0),
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+        alignment: Alignment.center,
         decoration: ShapeDecoration(
           color: isSelected
-              ? activeColor.withValues(alpha: 0.20)
+              ? activeColor.withValues(alpha: 0.25)
               : AppColors.interactiveModule,
           shape: AppDecorations.chamferShape(
             chamfer: AppDecorations.chamferXs,
             borderColor: isSelected ? activeColor : AppColors.structuralSeam,
+            borderWidth: isSelected ? 1.8 : 1.0,
           ),
+          shadows: isSelected
+              ? [
+                  BoxShadow(
+                    color: activeColor.withValues(alpha: 0.35),
+                    blurRadius: 8.0,
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           label,
