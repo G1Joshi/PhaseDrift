@@ -925,21 +925,32 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
       },
       borderRadius: BorderRadius.circular(4.0),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
+        constraints: const BoxConstraints(minHeight: 38.0),
+        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+        alignment: Alignment.center,
         decoration: ShapeDecoration(
           color: isSelected
-              ? activeColor.withValues(alpha: 0.20)
+              ? activeColor.withValues(alpha: 0.22)
               : AppColors.interactiveModule,
           shape: AppDecorations.chamferShape(
             chamfer: AppDecorations.chamferXs,
             borderColor: isSelected ? activeColor : AppColors.structuralSeam,
+            borderWidth: isSelected ? 1.8 : 1.0,
           ),
+          shadows: isSelected
+              ? [
+                  BoxShadow(
+                    color: activeColor.withValues(alpha: 0.35),
+                    blurRadius: 8.0,
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           label,
           style: AppTypography.telemetryLabel.copyWith(
             color: isSelected ? activeColor : AppColors.onSurfaceVariant,
-            fontSize: 10.0,
+            fontSize: 10.5,
             fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
           ),
         ),
@@ -964,6 +975,10 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
     final chamberGridCount =
         displayedChambers.length + (showQuantumCard ? 1 : 0);
 
+    final viewPadding = MediaQuery.viewPaddingOf(context);
+    final safeLeft = viewPadding.left > 20.0 ? viewPadding.left : 20.0;
+    final safeRight = viewPadding.right > 20.0 ? viewPadding.right : 20.0;
+
     return Scaffold(
       backgroundColor: AppColors.obsidianVoid,
       body: KeyboardListener(
@@ -972,9 +987,11 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
         onKeyEvent: _handleKeyEvent,
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24.0,
-              vertical: 16.0,
+            padding: EdgeInsets.only(
+              left: safeLeft,
+              right: safeRight,
+              top: 10.0,
+              bottom: 12.0,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -984,11 +1001,17 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
+                      constraints: const BoxConstraints(
+                        minWidth: 48.0,
+                        minHeight: 48.0,
+                      ),
+                      iconSize: 26.0,
                       icon: const Icon(
                         Icons.arrow_back,
                         color: AppColors.onSurface,
                       ),
                       onPressed: () {
+                        HapticsService.instance.triggerClick();
                         if (inSectorView) {
                           setState(() => _selectedSector = null);
                         } else {
@@ -1031,14 +1054,18 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
                     Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap: _openMilestones,
+                        onTap: () {
+                          HapticsService.instance.triggerClick();
+                          _openMilestones();
+                        },
                         customBorder: AppDecorations.chamferShape(
                           chamfer: AppDecorations.chamferXs,
                         ),
                         child: Container(
+                          constraints: const BoxConstraints(minHeight: 40.0),
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8.0,
-                            vertical: 5.0,
+                            horizontal: 10.0,
+                            vertical: 6.0,
                           ),
                           decoration: ShapeDecoration(
                             color: AppColors.cardSurface,
@@ -1052,16 +1079,16 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
                             children: [
                               const Icon(
                                 Icons.emoji_events,
-                                size: 14.0,
+                                size: 16.0,
                                 color: AppColors.solarGold,
                               ),
-                              const SizedBox(width: 4.0),
+                              const SizedBox(width: 5.0),
                               Text(
                                 '$_unlockedMilestonesCount/16',
                                 style: AppTypography.telemetryLabel.copyWith(
                                   color: AppColors.voidCyan,
                                   fontWeight: FontWeight.w800,
-                                  fontSize: 9.5,
+                                  fontSize: 10.0,
                                 ),
                               ),
                             ],
@@ -1071,7 +1098,7 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16.0),
+                const SizedBox(height: 12.0),
 
                 // Sector Quick-Switcher Tabs
                 SingleChildScrollView(
@@ -1113,7 +1140,7 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16.0),
+                const SizedBox(height: 12.0),
 
                 // Content Area: Either Sector Cards OR Chamber Cards
                 Expanded(
@@ -1137,12 +1164,14 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
                               gridDelegate:
                                   SliverGridDelegateWithFixedCrossAxisCount(
                                     crossAxisCount: crossAxisCount,
-                                    crossAxisSpacing: 16.0,
-                                    mainAxisSpacing: 16.0,
+                                    crossAxisSpacing: 14.0,
+                                    mainAxisSpacing: 14.0,
                                     childAspectRatio:
                                         constraints.maxHeight < 400
-                                        ? 1.55
-                                        : 1.25,
+                                        ? 1.68
+                                        : (constraints.maxHeight < 500
+                                              ? 1.55
+                                              : 1.30),
                                   ),
                               itemCount: chamberGridCount,
                               itemBuilder: (context, index) {
@@ -1174,12 +1203,14 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
                               gridDelegate:
                                   SliverGridDelegateWithFixedCrossAxisCount(
                                     crossAxisCount: crossAxisCount,
-                                    crossAxisSpacing: 16.0,
-                                    mainAxisSpacing: 16.0,
+                                    crossAxisSpacing: 14.0,
+                                    mainAxisSpacing: 14.0,
                                     childAspectRatio:
                                         constraints.maxHeight < 400
-                                        ? 1.55
-                                        : 1.25,
+                                        ? 1.68
+                                        : (constraints.maxHeight < 500
+                                              ? 1.55
+                                              : 1.30),
                                   ),
                               itemCount: 6,
                               itemBuilder: (context, index) {
@@ -1198,7 +1229,7 @@ class _ChamberSelectScreenState extends State<ChamberSelectScreen> {
                           },
                         ),
                 ),
-                const SizedBox(height: 10.0),
+                const SizedBox(height: 8.0),
                 Center(
                   child: Text(
                     AppPlatform.isTouchDevice(context)
